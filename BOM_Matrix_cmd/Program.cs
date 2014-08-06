@@ -63,14 +63,16 @@ namespace BOM_Matrix_cmd
 
                     int i = 0;
                     hr = hs.GetRow(i); //column
-                    for (int j = hr.FirstCellNum; j <= hr.LastCellNum; j++)
+                    for (int j = hr.FirstCellNum; j < hr.LastCellNum; j++)
                     {
-                        if (hr.GetCell(j).ToString() != null)
+                        Console.WriteLine("run:{0}",j);
+                        if (hr.GetCell(j) != null)
                         {
                             Console.Write("({0},{1}) = {2} ; ", i, j, hr.GetCell(j).ToString());
                         }
                     }
                 }
+                Console.WriteLine("finish");
 
                 /*
                 for (int k = 0; k < wk.NumberOfSheets; k++) //讀出sheetname
