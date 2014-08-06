@@ -1,0 +1,15 @@
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\bin\Debug\BOM_Matrix_cmd.exe
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\bin\Debug\BOM_Matrix_cmd.pdb
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\bin\Debug\ICSharpCode.SharpZipLib.dll
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\bin\Debug\NPOI.dll
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\bin\Debug\NPOI.OOXML.dll
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\bin\Debug\NPOI.OpenXml4Net.dll
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\bin\Debug\NPOI.OpenXmlFormats.dll
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\bin\Debug\NPOI.xml
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\bin\Debug\NPOI.OOXML.xml
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\bin\Debug\NPOI.OpenXml4Net.xml
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\obj\x86\Debug\BOM_Matrix_cmd.csprojResolveAssemblyReference.cache
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\obj\x86\Debug\BOM_Matrix_cmd.exe
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\BOM_Matrix_cmd\obj\x86\Debug\BOM_Matrix_cmd.pdb
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\obj\x86\Debug\BOM_Matrix_cmd.exe
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\obj\x86\Debug\BOM_Matrix_cmd.pdb
