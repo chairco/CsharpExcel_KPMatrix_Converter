@@ -7,6 +7,14 @@ using NPOI.SS.UserModel;
 using System.IO;
 using NPOI.HSSF.Util;
 using NPOI.HSSF.UserModel;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Reflection;
+using System.Data;
+using System.Data.OleDb;
+using System.Collections;
+using System.Collections.Generic; //list1
+using System.Collections.Specialized;
 
 /*
 透過NPOI來讀取EXCEL,要先下載NPOI DLL去參考,說明如下:
@@ -56,25 +64,26 @@ namespace BOM_Matrix_cmd
                     st = (HSSFSheet)wk.GetSheetAt(0);
                 }
 
+                /*
+                //每個Sheet都會讀
                 for (int k = 0; k < wk.NumberOfSheets; k++)
                 {
+                    //設定hs為某一個Sheet
                     var hs = wk.GetSheetAt(k);
-                    var hr = hs.GetRow(0); //row
-
-                    int i = 0;
-                    hr = hs.GetRow(i); //column
-                    for (int j = hr.FirstCellNum; j < hr.LastCellNum; j++)
+                    
+                    //設定Row(X軸),一開始從0開始
+                    var hr = hs.GetRow(0);
+                    int j = 0;
+                    for (int i = hs.FirstRowNum; i <= hs.LastRowNum; i++)
                     {
-                        Console.WriteLine("run:{0}",j);
                         if (hr.GetCell(j) != null)
                         {
-                            Console.Write("({0},{1}) = {2} ; ", i, j, hr.GetCell(j).ToString());
+                            Console.WriteLine("({0},{1}) = {2} ; ", i, j, hr.GetCell(i).ToString());
                         }
                     }
+                    Console.WriteLine("finish");
                 }
-                Console.WriteLine("finish");
-
-                /*
+                */
                 for (int k = 0; k < wk.NumberOfSheets; k++) //讀出sheetname
                 {
                     var hs = wk.GetSheetAt(k); //sheet
@@ -100,7 +109,6 @@ namespace BOM_Matrix_cmd
                         //Console.WriteLine("\t\n");
                     }
                 }
-                */
 
                 wk = null; //全部Sheet讀完關閉Excel
                 fs.Close();
@@ -111,6 +119,118 @@ namespace BOM_Matrix_cmd
                 }
                 Console.Read();
             }
+        }
+
+        public void ReadExcel()
+        {
+            IWorkbook WK;
+            using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite))
+            {
+                if (Datasource.Contains(".xlsx")) //2007
+                {
+                    WK = new XSSFWorkbook(fs);
+                }
+                else //2003
+                {
+                    WK = new HSSFWorkbook(fs);
+                }
+                
+                ISheet sheet = WK.GetSheet("FATP");
+
+                for (int column = 0; column <= sheet.LastRowNum; column++)
+                {
+                    if (column >= 0 && column <= 2)
+                    {
+                        if (sheet.GetRow(column).GetCell(0) != null && sheet.GetRow(column).GetCell(0).ToString() != "")
+                        {
+                            Console.WriteLine("Row {0} = {1}", column, sheet.GetRow(column).GetCell(0).StringCellValue);
+                        }
+                    }
+                }
+            }
+            Console.Read();
+        }
+
+        //設定ConfigHashTable
+        public class ConfigHashTable
+        {
+            public string setConfigAsix { get; set; }
+        }
+
+        public Hashtable ConfigName = new Hashtable();
+
+        public void TestExcel()
+        { 
+            IWorkbook wk = null;
+            ISheet st;
+            bool flag = false; //用來判斷是否讀到configs
+            
+            //New confighashtable
+            HashSet<ConfigHashTable> configlist = new HashSet<ConfigHashTable>();
+
+            using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite))
+            {
+                //new confighash為SetConfigAsix
+                ConfigHashTable ConfigHash = new ConfigHashTable();
+                
+                if (Datasource.Contains(".xlsx")) //2007
+                {
+                    wk = new XSSFWorkbook(fs);
+                }
+                else //2003
+                {
+                    wk = new HSSFWorkbook(fs);
+                }
+
+                for (int k = 0; k < wk.NumberOfSheets; k++)
+                {
+                    st = wk.GetSheetAt(k);
+                    IRow row = st.GetRow(k); //當前行數
+
+                    //一列讀x軸
+                    for (int i = 0; i <= st.LastRowNum; i++)
+                    {
+                        row = st.GetRow(i);
+                        if (row != null)
+                        {
+                            //一列內(x軸)的cell讀出來
+                            for (int j = 0; j < row.LastCellNum; j++)
+                            {
+                                if (row.GetCell(j) != null)
+                                {
+                                    string value = row.GetCell(j).ToString();
+                                    if (value == "Configs")
+                                    {
+                                        flag = true;
+                                    }
+                                    if (flag == true && value != "Configs")
+                                    {
+                                        Console.WriteLine("Config={0}, X={1},",value.ToString(),j);
+                                        ConfigName.Add(value.ToString(), j);
+                                    }
+                                }
+                            }
+                            flag = false;
+                        }
+                    }
+                }
+            wk = null; //全部Sheet讀完關閉Excel
+            fs.Close();
+            }
+            Console.WriteLine("finish");
+            Console.Read();
+            
+
+            //foreach (DictionaryEntry one in ConfigName)
+            //{
+            //    String infoString = "";
+            //    object savedDetail = one.Value;
+            //    foreach (DictionaryEntry detail in (Hashtable)savedDetail)
+            //    {
+            //        infoString = infoString + detail.Key.ToString() + " => " + detail.Value.ToString() + "\r\n";
+            //        Console.WriteLine("索引鍵:{0},值:{1}", detail.Key, detail.Value);
+            //    }
+            //}
         }
     }
 
@@ -158,7 +278,9 @@ namespace BOM_Matrix_cmd
         {
             string file = "C:\\Panda.xlsx";
             EXCEL excel = new EXCEL(file);
-            excel.ExcelToList();
+            excel.TestExcel();
+            //excel.ReadExcel();
+            //excel.ExcelToList();
         }
     }
 }
