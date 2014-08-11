@@ -2,19 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Reflection;
+using System.Data;
+using System.Collections;
+using System.Collections.Specialized;
 using NPOI.XSSF.UserModel;
 using NPOI.SS.UserModel;
 using System.IO;
 using NPOI.HSSF.Util;
 using NPOI.HSSF.UserModel;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Reflection;
-using System.Data;
-using System.Data.OleDb;
-using System.Collections;
-using System.Collections.Generic; //list1
-using System.Collections.Specialized;
 
 /*
 透過NPOI來讀取EXCEL,要先下載NPOI DLL去參考,說明如下:
@@ -29,150 +27,34 @@ ICSharpCode.SharpZipLib.DLL：檔案壓縮函式庫。
 
 namespace BOM_Matrix_cmd
 {
-    public class SheetModifyProductList
-    {
-        public string setProductNumber { get; set; }
-    }
-
-    class EXCEL
+    class _EXCEL
     {
         private string fileName = null; // Data name
         private string Datasource = null;
 
-        public EXCEL(string fileName)
+        public Hashtable ht = new Hashtable();
+
+        public _EXCEL(string fileName)
         {
             this.fileName = fileName;
             this.Datasource = fileName;
         }
 
-        public void ExcelToList()
+        public DataTable ExcelToDataTable()
         {
-            IWorkbook wk;
-            ISheet st;
-            List<SheetModifyProductList> modelList = new List<SheetModifyProductList>(); //add
+            DataTable dt = new DataTable();
+            List<string> ItemList = new List<string>();
 
-            using (FileStream fs = new FileStream(Datasource, FileMode.Open, FileAccess.Read))
-            {
-                if (Datasource.Contains(".xlsx")) //2007
-                {
-                    wk = new XSSFWorkbook(fs);
-                    st = (XSSFSheet)wk.GetSheetAt(0);
-                }
-                else //2003
-                {
-                    wk = new HSSFWorkbook(fs);
-                    st = (HSSFSheet)wk.GetSheetAt(0);
-                }
-
-                /*
-                //每個Sheet都會讀
-                for (int k = 0; k < wk.NumberOfSheets; k++)
-                {
-                    //設定hs為某一個Sheet
-                    var hs = wk.GetSheetAt(k);
-                    
-                    //設定Row(X軸),一開始從0開始
-                    var hr = hs.GetRow(0);
-                    int j = 0;
-                    for (int i = hs.FirstRowNum; i <= hs.LastRowNum; i++)
-                    {
-                        if (hr.GetCell(j) != null)
-                        {
-                            Console.WriteLine("({0},{1}) = {2} ; ", i, j, hr.GetCell(i).ToString());
-                        }
-                    }
-                    Console.WriteLine("finish");
-                }
-                */
-                for (int k = 0; k < wk.NumberOfSheets; k++) //讀出sheetname
-                {
-                    var hs = wk.GetSheetAt(k); //sheet
-                    string sheetname = hs.SheetName.ToString(); //sheet's name
-                    Console.WriteLine("Sheet name: {0}.{1}", k, sheetname);
-                    if (sheetname != "N61 FF") continue;
-
-                    var hr = hs.GetRow(0); //row
-                    for (int i = hs.FirstRowNum; i <= hs.LastRowNum; i++)
-                    {
-                        hr = hs.GetRow(i); //column
-                        for (int j = hr.FirstCellNum; j < hr.LastCellNum; j++)
-                        {
-                            SheetModifyProductList model = new SheetModifyProductList(); //add
-
-                            if (i == 0 && hr.GetCell(j) != null)
-                            {
-                                //Console.Write("({0},{1}) = {2} ; ", i, j, hr.GetCell(j).ToString());
-                                model.setProductNumber = hr.GetCell(j).ToString() + ";";
-                            }
-                            modelList.Add(model);
-                        }
-                        //Console.WriteLine("\t\n");
-                    }
-                }
-
-                wk = null; //全部Sheet讀完關閉Excel
-                fs.Close();
-
-                foreach (var item in modelList)
-                {
-                    Console.Write(item.setProductNumber);
-                }
-                Console.Read();
-            }
-        }
-
-        public void ReadExcel()
-        {
-            IWorkbook WK;
-            using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite))
-            {
-                if (Datasource.Contains(".xlsx")) //2007
-                {
-                    WK = new XSSFWorkbook(fs);
-                }
-                else //2003
-                {
-                    WK = new HSSFWorkbook(fs);
-                }
-                
-                ISheet sheet = WK.GetSheet("FATP");
-
-                for (int column = 0; column <= sheet.LastRowNum; column++)
-                {
-                    if (column >= 0 && column <= 2)
-                    {
-                        if (sheet.GetRow(column).GetCell(0) != null && sheet.GetRow(column).GetCell(0).ToString() != "")
-                        {
-                            Console.WriteLine("Row {0} = {1}", column, sheet.GetRow(column).GetCell(0).StringCellValue);
-                        }
-                    }
-                }
-            }
-            Console.Read();
-        }
-
-        //設定ConfigHashTable
-        public class ConfigHashTable
-        {
-            public string setConfigAsix { get; set; }
-        }
-
-        public Hashtable ConfigName = new Hashtable();
-
-        public void TestExcel()
-        { 
             IWorkbook wk = null;
             ISheet st;
-            bool flag = false; //用來判斷是否讀到configs
+            Boolean column_flag = false;
+            Boolean dt_flag = false;
+            Boolean comp_flag = true;
+            String Item_value = null;
+            String Comp_value = null;
             
-            //New confighashtable
-            HashSet<ConfigHashTable> configlist = new HashSet<ConfigHashTable>();
-
             using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite))
             {
-                //new confighash為SetConfigAsix
-                ConfigHashTable ConfigHash = new ConfigHashTable();
-                
                 if (Datasource.Contains(".xlsx")) //2007
                 {
                     wk = new XSSFWorkbook(fs);
@@ -182,93 +64,104 @@ namespace BOM_Matrix_cmd
                     wk = new HSSFWorkbook(fs);
                 }
 
+                //依照順序讀每個Sheet(k)
                 for (int k = 0; k < wk.NumberOfSheets; k++)
                 {
                     st = wk.GetSheetAt(k);
                     IRow row = st.GetRow(k); //當前行數
+                    DataRow dr = null;
+                    String value = null;
 
-                    //一列讀x軸
+                    //開始讀表格,一列開始讀(row,x軸)再讀行(其實是讀每個cell)
                     for (int i = 0; i <= st.LastRowNum; i++)
                     {
+                        dr = dt.NewRow();
                         row = st.GetRow(i);
                         if (row != null)
                         {
-                            //一列內(x軸)的cell讀出來
                             for (int j = 0; j < row.LastCellNum; j++)
                             {
-                                if (row.GetCell(j) != null)
+                                if (row.GetCell(j) != null) //解決跨行cell是空值問題
                                 {
-                                    string value = row.GetCell(j).ToString();
-                                    if (value == "Configs")
+                                    value = row.GetCell(j).ToString().ToUpper();
+
+                                    //只抓從ITEM欄位開始的資料
+                                    if (value == "ITEM")
                                     {
-                                        flag = true;
+                                        //Console.WriteLine("開始抓Column");
+                                        column_flag = true;
+                                        dt_flag = true;
                                     }
-                                    if (flag == true && value != "Configs")
+                                    
+                                    //因為ITEM,COPMPNENT是一個跨行CELL將她獨立出來,加在每一個dt
+                                    if (dt_flag && row.GetCell(0).IsMergedCell)
                                     {
-                                        Console.WriteLine("Config={0}, X={1},",value.ToString(),j);
-                                        ConfigName.Add(value.ToString(), j);
+                                        Item_value = row.GetCell(0).ToString().ToUpper();
+                                        //Console.WriteLine(Item_value);
+                                        break;
+                                    }
+                                    if (dt_flag && row.GetCell(2).IsMergedCell && comp_flag)
+                                    {
+                                        Comp_value = row.GetCell(2).ToString().ToUpper();
+                                        //Console.WriteLine(Comp_value);
+                                        comp_flag = false;
+                                    }
+
+                                    //標題
+                                    if (column_flag && dt_flag)
+                                    {
+                                        //Console.WriteLine("Column座標 ({0},{1}) = {2}", i, j, value);
+                                        dt.Columns.Add(row.GetCell(j).StringCellValue.Trim());
+                                    }
+                                    
+                                    //內容
+                                    if (!column_flag && dt_flag) //可能會有公式欄位,需要改個寫法
+                                    { 
+                                        //Console.WriteLine("Row座標 ({0},{1}) = {2}", i, j, value);
+                                        if (j == 0)
+                                        {
+                                            dt.Rows.Add(Item_value);
+                                        }
+                                        else if (j == 2)
+                                        {
+                                            dt.Rows.Add(Comp_value);
+                                        }
+                                        else
+                                        {
+                                            dt.Rows.Add(value);
+                                        }
                                     }
                                 }
                             }
-                            flag = false;
+                            column_flag = false;
                         }
                     }
                 }
-            wk = null; //全部Sheet讀完關閉Excel
-            fs.Close();
+                wk = null; //全部Sheet讀完關閉Excel
+                fs.Close();
             }
-            Console.WriteLine("finish");
-            Console.Read();
-            
-
-            //foreach (DictionaryEntry one in ConfigName)
-            //{
-            //    String infoString = "";
-            //    object savedDetail = one.Value;
-            //    foreach (DictionaryEntry detail in (Hashtable)savedDetail)
-            //    {
-            //        infoString = infoString + detail.Key.ToString() + " => " + detail.Value.ToString() + "\r\n";
-            //        Console.WriteLine("索引鍵:{0},值:{1}", detail.Key, detail.Value);
-            //    }
-            //}
+            return dt;
         }
-    }
 
-    class sample_test
-    {
-        public void test()
+        public void DisplayHashTable(Hashtable data)
         {
-            //建立Excel 2003檔案
-            IWorkbook wb = new HSSFWorkbook();
-            ISheet ws = wb.CreateSheet("Class");
+            foreach (DictionaryEntry Table in data)
+            {
+                Console.WriteLine("索引鍵:{0},值:{1}", Table.Key, Table.Value);
+            }
+        }
 
-            ////建立Excel 2007檔案
-            //IWorkbook wb = new XSSFWorkbook();
-            //ISheet ws = wb.CreateSheet("Class");
+        public void DisplayDataTable(DataTable dt)
+        {
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                Console.WriteLine("value{0} = {1}",i,dt.Rows[i][0].ToString());
+            }
 
-            ws.CreateRow(0);//第一行為欄位名稱
-            ws.GetRow(0).CreateCell(0).SetCellValue("name");
-            ws.GetRow(0).CreateCell(1).SetCellValue("score");
+            Console.WriteLine("\n" + dt.Rows.Count);
+            Console.WriteLine(dt.Columns.Count);
             
-            ws.CreateRow(1);//第二行之後為資料
-            ws.GetRow(1).CreateCell(0).SetCellValue("abey");
-            ws.GetRow(1).CreateCell(1).SetCellValue(85);
-            ws.CreateRow(2);
-            ws.GetRow(2).CreateCell(0).SetCellValue("tina");
-            ws.GetRow(2).CreateCell(1).SetCellValue(82);
-            ws.CreateRow(3);
-            ws.GetRow(3).CreateCell(0).SetCellValue("boi");
-            ws.GetRow(3).CreateCell(1).SetCellValue(84);
-            ws.CreateRow(4);
-            ws.GetRow(4).CreateCell(0).SetCellValue("hebe");
-            ws.GetRow(4).CreateCell(1).SetCellValue(86);
-            ws.CreateRow(5);
-            ws.GetRow(5).CreateCell(0).SetCellValue("paul");
-            ws.GetRow(5).CreateCell(1).SetCellValue(82);
-            
-            FileStream file = new FileStream(@"c:\npoi.xls", FileMode.Create);//產生檔案
-            wb.Write(file);
-            file.Close();
+            Console.Read();
         }
     }
 
@@ -277,10 +170,8 @@ namespace BOM_Matrix_cmd
         static void Main(string[] args)
         {
             string file = "C:\\Panda.xlsx";
-            EXCEL excel = new EXCEL(file);
-            excel.TestExcel();
-            //excel.ReadExcel();
-            //excel.ExcelToList();
+            _EXCEL excel = new _EXCEL(file);
+            excel.DisplayDataTable(excel.ExcelToDataTable());
         }
     }
 }
