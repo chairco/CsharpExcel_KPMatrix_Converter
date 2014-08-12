@@ -35,8 +35,6 @@ namespace BOM_Matrix_cmd
         //存config
         public List<string> configList = new List<string>();
 
-        public Hashtable ht = new Hashtable();
-
         public _EXCEL(string fileName)
         {
             this.fileName = fileName;
@@ -211,14 +209,6 @@ namespace BOM_Matrix_cmd
             return dt;
         }
 
-        public void DisplayHashTable(Hashtable data)
-        {
-            foreach (DictionaryEntry Table in data)
-            {
-                Console.WriteLine("索引鍵:{0},值:{1}", Table.Key, Table.Value);
-            }
-        }
-
         public void DisplayDataTable(DataTable dt)
         {
             List<int> ItemList = new List<int>();
@@ -259,6 +249,7 @@ namespace BOM_Matrix_cmd
             Console.Read();
         }
 
+        //sample
         public DataTable GetDataTableFromExcelFile()
         {
             FileStream fs = null;
@@ -333,14 +324,19 @@ namespace BOM_Matrix_cmd
 
     class Program
     {
+        //main program
         static void Main(string[] args)
         {
             DataTable dt = new DataTable();
+            
+            //read excel path
             string file = "C:\\Panda_2.xlsx";
             _EXCEL excel = new _EXCEL(file);
-
+            
+            //read excel config data to Datatable and arrayList
             excel.ExcelToConfig();
 
+            //read excel item data to Datatable
             dt = excel.ExcelToDataTable();
             excel.DisplayDataTable(dt);
 
