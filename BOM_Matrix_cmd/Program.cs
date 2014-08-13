@@ -32,6 +32,8 @@ namespace BOM_Matrix_cmd
         private string fileName = null; // Data name
         private string Datasource = null;
 
+        public Hashtable dt_out = new Hashtable();
+
         //存config
         public List<string> configList = new List<string>();
 
@@ -258,25 +260,42 @@ namespace BOM_Matrix_cmd
                         dr2[j] = dt.Rows[i][j];
                     }
                     dt2.Rows.Add(dr2);
+                    //Console.Write("\n\n");
+                }
+            }
+            //Console.Write("\n\n");
+
+            //for (int i = 0; i < dt.Columns.Count; i++)
+            //{
+            //    Console.Write(dt.Columns[i].ColumnName+", ");
+            //}
+
+            //Console.Write("\n\n");
+
+            //for (int i = 0; i < dt2.Rows.Count; i++)
+            //{
+            //    for (int j = 0; j < dt2.Columns.Count; j++)
+            //    {
+            //        Console.Write(dt2.Rows[i][j].ToString() + ", ");
+            //    }
+            //    Console.Write("\n\n");
+            //}
+
+            dt_out.Add(config, dt2);
+
+            foreach (DictionaryEntry one in dt_out)
+            {
+                Console.WriteLine(one.Key);
+                DataTable value = (DataTable)one.Value;
+                for (int i = 0; i < value.Rows.Count; i++)
+                {
+                    for (int j = 0; j < value.Columns.Count; j++)
+                    {
+                        Console.Write(value.Rows[i][j].ToString()+",");
+                    }
                     Console.Write("\n\n");
                 }
-            }
-            Console.Write("\n\n");
 
-            for (int i = 0; i < dt.Columns.Count; i++)
-            {
-                Console.Write(dt.Columns[i].ColumnName+", ");
-            }
-
-            Console.Write("\n\n");
-
-            for (int i = 0; i < dt2.Rows.Count; i++)
-            {
-                for (int j = 0; j < dt2.Columns.Count; j++)
-                {
-                    Console.Write(dt2.Rows[i][j].ToString() + ", ");
-                }
-                Console.Write("\n\n");
             }
 
             //foreach (object prime in dt_list) // Loop through List with foreach
@@ -284,8 +303,8 @@ namespace BOM_Matrix_cmd
             //    Console.Write(prime+", ");
             //}
 
-            Console.WriteLine("\n"+dt.Rows.Count);
-            Console.WriteLine(dt.Columns.Count);
+            //Console.WriteLine("\n"+dt.Rows.Count);
+            //Console.WriteLine(dt.Columns.Count);
             Console.Read();
         }
 
@@ -370,7 +389,7 @@ namespace BOM_Matrix_cmd
             DataTable dt = new DataTable();
             
             //read excel path
-            string file = "C:\\Panda_3.xlsx";
+            string file = "C:\\Panda_2.xlsx";
             _EXCEL excel = new _EXCEL(file);
             
             //read excel config data to Datatable and arrayList
