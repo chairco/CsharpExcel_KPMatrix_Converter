@@ -81,12 +81,10 @@ namespace BOM_Matrix_cmd
                                     value = row.GetCell(j).ToString().ToUpper();
                                     //Console.Write("({0},{1})={2}, ",i,j,value);
                                     //Console.Write(value + ",");
-                                    if(i==2)
+                                    if(i==2 && j>=30)
                                     {
-                                        if (j == 30 || j == 31)
-                                        {
-                                            configList.Add(value);
-                                        }
+                                        //Console.WriteLine(value);
+                                        configList.Add(value);
                                     }
                                 }
                             }
@@ -106,7 +104,7 @@ namespace BOM_Matrix_cmd
             IWorkbook wk = null;
             Boolean column_flag = false;
             Boolean dt_flag = false;
-            Boolean comp_flag = true;
+            Boolean comp_flag = false;
             String Item_value = null;
             String Comp_value = null;
             
@@ -128,6 +126,7 @@ namespace BOM_Matrix_cmd
                     IRow row = null;
                     String value = null;
                     DataRow dr = null;
+                    CellType ct = CellType.Blank;
 
                     Console.WriteLine("\nItem寫入記憶體\n");
 
@@ -152,22 +151,23 @@ namespace BOM_Matrix_cmd
                                         column_flag = true; //用來判斷標頭
                                         dt_flag = true; //用來判斷開始抓入dt
                                     }
-                                    
                                     //因為ITEM,COPMPNENT是一個跨行CELL將她獨立出來,加在每一個dt
                                     if (dt_flag && row.GetCell(0).IsMergedCell)
                                     {
                                         Item_value = row.GetCell(0).ToString().ToUpper();
                                         //Console.WriteLine(Item_value);
                                         dr[j] = Item_value;
+                                        comp_flag = false; //當item開始,compoment也要重新抓
                                         break;
                                     }
-                                    if (dt_flag && row.GetCell(2).IsMergedCell && comp_flag)
+                                    if (dt_flag && row.GetCell(2).IsMergedCell && !comp_flag)
                                     {
-                                        Comp_value = row.GetCell(2).ToString().ToUpper();
-                                        //Console.WriteLine(Comp_value);
-                                        comp_flag = false;
-                                    }
 
+                                        Comp_value = row.GetCell(2).ToString().ToUpper();
+                                        //Console.Write(Comp_value + ", ");
+                                        comp_flag = true;
+
+                                    }
                                     //標題
                                     if (column_flag && dt_flag)
                                     {
@@ -175,7 +175,6 @@ namespace BOM_Matrix_cmd
                                         dt.Columns.Add(row.GetCell(j).StringCellValue.Trim());
                                         dr[j] = row.GetCell(j);
                                     }
-                                    
                                     //內容
                                     if (!column_flag && dt_flag) //可能會有公式欄位,需要改個寫法
                                     { 
@@ -183,17 +182,29 @@ namespace BOM_Matrix_cmd
                                         if (j == 0)
                                         {
                                             dr[j] = Item_value;
-                                            //dt.Rows.Add(Item_value);
                                         }
                                         else if (j == 2)
                                         {
                                             dr[j] = Comp_value;
-                                            //dt.Rows.Add(Comp_value);
                                         }
                                         else
                                         {
-                                            dr[j] = value;
-                                            //dt.Rows.Add(value);
+                                            //dr[j] = value;//原本如果不做公式轉換，會有錯誤
+
+                                            ct = row.GetCell(j).CellType;
+                                            //如果此欄位格式為公式 則去取得CachedFormulaResultType
+                                            if (ct == CellType.Formula)
+                                            {
+                                                ct = row.GetCell(j).CachedFormulaResultType;
+                                            }
+                                            if (ct == CellType.Numeric)
+                                            {
+                                                dr[j] = row.GetCell(j).NumericCellValue;
+                                            }
+                                            else
+                                            {
+                                                dr[j] = row.GetCell(j).ToString().Replace("$", "");
+                                            }
                                         }
                                     }
                                 }
@@ -209,42 +220,71 @@ namespace BOM_Matrix_cmd
             return dt;
         }
 
-        public void DisplayDataTable(DataTable dt)
+        public void DisplayDataTable(DataTable dt, string config)
         {
-            List<int> ItemList = new List<int>();
+            int ItemList_row = 0;
+            List<int> ItemList_col = new List<int>();
+            DataRow dr2 = null;
+            DataTable dt2;
+            dt2 = dt.Clone(); //dt2建立一個和dt一樣的schmea,不包含rows只包含columns
 
+            //找出config row位置
             for (int i = 0; i < dt.Columns.Count; i++)
             {
                 //Console.Write("{0} = {1},",i,dt.Columns[i].ColumnName);
-                if (dt.Columns[i].ColumnName == "G37") //選擇config
+                if (dt.Columns[i].ColumnName == config) //選擇config
                 {
-                    Console.WriteLine("\n{0} site= {1}", dt.Columns[i].ColumnName, i);
+                    Console.WriteLine("{0} site= {1}", dt.Columns[i].ColumnName, i);
+                    ItemList_row = i;
                 }
             }
             Console.Write("\n");
             
+            //印出和儲存config所有componemt data
             for (int i = 0; i < dt.Rows.Count; i++)
             {
-                for (int j = 0; j < dt.Columns.Count; j++)
+                
+                //尋找X位置
+                if (dt.Rows[i][ItemList_row].ToString().ToUpper() == "X")
                 {
-                    Console.Write("({0},{1})={2} ;", i, j, dt.Rows[i][j].ToString());
-                    
-                    //驗證尋找X位置
-                    //if (dt.Rows[i][31].ToString().ToUpper() == "X")
-                    //{
-                    //    Console.WriteLine("\n({0},{1}) = {2}", i,j,dt.Rows[i][31].ToString());
-                    //    ItemList.Add(i);
-                    //    break;
-                    //}
+                    //印出row位置並儲存
+                    //Console.WriteLine("({0},{1}) = {2}", i, ItemList_row, dt.Rows[i][ItemList_row].ToString()); //印出有ｘ的值
+                    ItemList_col.Add(i);
+                    dr2 = dt2.NewRow();
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        //Console.Write("({0},{1}) = {2}, ",i,j,dt.Rows[i][j]);
+                        //Console.Write(dt.Rows[i][j]+", ");
+                        dr2[j] = dt.Rows[i][j];
+                    }
+                    dt2.Rows.Add(dr2);
+                    Console.Write("\n\n");
                 }
             }
-            Console.Write("\n");
-            //foreach (int prime in ItemList) // Loop through List with foreach
+            Console.Write("\n\n");
+
+            for (int i = 0; i < dt.Columns.Count; i++)
+            {
+                Console.Write(dt.Columns[i].ColumnName+", ");
+            }
+
+            Console.Write("\n\n");
+
+            for (int i = 0; i < dt2.Rows.Count; i++)
+            {
+                for (int j = 0; j < dt2.Columns.Count; j++)
+                {
+                    Console.Write(dt2.Rows[i][j].ToString() + ", ");
+                }
+                Console.Write("\n\n");
+            }
+
+            //foreach (object prime in dt_list) // Loop through List with foreach
             //{
-            //    Console.WriteLine(prime);
+            //    Console.Write(prime+", ");
             //}
 
-            Console.WriteLine(dt.Rows.Count);
+            Console.WriteLine("\n"+dt.Rows.Count);
             Console.WriteLine(dt.Columns.Count);
             Console.Read();
         }
@@ -330,7 +370,7 @@ namespace BOM_Matrix_cmd
             DataTable dt = new DataTable();
             
             //read excel path
-            string file = "C:\\Panda_2.xlsx";
+            string file = "C:\\Panda_3.xlsx";
             _EXCEL excel = new _EXCEL(file);
             
             //read excel config data to Datatable and arrayList
@@ -338,7 +378,7 @@ namespace BOM_Matrix_cmd
 
             //read excel item data to Datatable
             dt = excel.ExcelToDataTable();
-            excel.DisplayDataTable(dt);
+            excel.DisplayDataTable(dt,"G37");
 
             //excel.DisplayDataTable(excel.ExcelToDataTable());
             //excel.DisplayDataTable(excel.GetDataTableFromExcelFile());
