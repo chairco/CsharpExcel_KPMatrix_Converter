@@ -31,11 +31,12 @@ namespace BOM_Matrix_cmd
     {
         private string fileName = null; // Data name
         private string Datasource = null;
-
-        public Hashtable dt_out = new Hashtable();
-
-        //存config
-        public List<string> configList = new List<string>();
+        
+        public List<string> configList = new List<string>(); //存config
+        public List<string> complist = new List<string>(); //存component
+        public Hashtable db = new Hashtable(); //根據config存component
+        public Hashtable db_comp = new Hashtable();
+        public Hashtable db_config = new Hashtable();
 
         public _EXCEL(string fileName)
         {
@@ -106,7 +107,6 @@ namespace BOM_Matrix_cmd
             IWorkbook wk = null;
             Boolean column_flag = false;
             Boolean dt_flag = false;
-            Boolean comp_flag = false;
             String Item_value = null;
             String Comp_value = null;
             
@@ -120,8 +120,7 @@ namespace BOM_Matrix_cmd
                 {
                     wk = new HSSFWorkbook(fs);
                 }
-
-                //因為只有一個Sheet
+                //只有一個Sheet,k=0
                 for (int k = 0; k < wk.NumberOfSheets; k++)
                 {
                     ISheet st = wk.GetSheetAt(k);
@@ -130,8 +129,7 @@ namespace BOM_Matrix_cmd
                     DataRow dr = null;
                     CellType ct = CellType.Blank;
 
-                    Console.WriteLine("\nItem寫入記憶體\n");
-
+                    Console.WriteLine("Item寫入記憶體\n");
                     //開始讀表格,一列開始讀(row,x軸)再讀行(其實是讀每個cell)
                     for (int i = st.FirstRowNum; i <= st.LastRowNum; i++)
                     {
@@ -154,22 +152,18 @@ namespace BOM_Matrix_cmd
                                         dt_flag = true; //用來判斷開始抓入dt
                                     }
                                     //因為ITEM,COPMPNENT是一個跨行CELL將她獨立出來,加在每一個dt
-                                    if (dt_flag && row.GetCell(0).IsMergedCell)
+                                    if (dt_flag && row.GetCell(0).IsMergedCell)　//橫向只需要抓一遍就跳出
                                     {
                                         Item_value = row.GetCell(0).ToString().ToUpper();
-                                        //Console.WriteLine(Item_value);
                                         dr[j] = Item_value;
-                                        comp_flag = false; //當item開始,compoment也要重新抓
                                         break;
                                     }
-                                    if (dt_flag && row.GetCell(2).IsMergedCell && !comp_flag)
+                                    if (dt_flag && row.GetCell(2).CellType.ToString() != "Blank")　//直向要判斷是否有新的值
                                     {
-
                                         Comp_value = row.GetCell(2).ToString().ToUpper();
-                                        //Console.Write(Comp_value + ", ");
-                                        comp_flag = true;
-
+                                        if (!complist.Contains(Comp_value) && Comp_value != "COMPONENT") complist.Add(Comp_value);
                                     }
+
                                     //標題
                                     if (column_flag && dt_flag)
                                     {
@@ -222,162 +216,144 @@ namespace BOM_Matrix_cmd
             return dt;
         }
 
-        public void DisplayDataTable(DataTable dt, string config)
+        public void DataTableToHashTable(DataTable dt)
         {
             int ItemList_row = 0;
-            List<int> ItemList_col = new List<int>();
             DataRow dr2 = null;
-            DataTable dt2;
-            dt2 = dt.Clone(); //dt2建立一個和dt一樣的schmea,不包含rows只包含columns
 
-            //找出config row位置
-            for (int i = 0; i < dt.Columns.Count; i++)
+            //根據存在list config一個一個讀出所有數據並存在HashTable
+            foreach(string config in configList)
             {
-                //Console.Write("{0} = {1},",i,dt.Columns[i].ColumnName);
-                if (dt.Columns[i].ColumnName == config) //選擇config
+                DataTable dt2;
+                dt2 = dt.Clone(); //dt2建立一個和dt一樣的schmea,不包含rows data只包含columns data
+
+                //找出config row位置
+                for (int i = 0; i < dt.Columns.Count; i++)
                 {
-                    Console.WriteLine("{0} site= {1}", dt.Columns[i].ColumnName, i);
-                    ItemList_row = i;
-                }
-            }
-            Console.Write("\n");
-            
-            //印出和儲存config所有componemt data
-            for (int i = 0; i < dt.Rows.Count; i++)
-            {
-                
-                //尋找X位置
-                if (dt.Rows[i][ItemList_row].ToString().ToUpper() == "X")
-                {
-                    //印出row位置並儲存
-                    //Console.WriteLine("({0},{1}) = {2}", i, ItemList_row, dt.Rows[i][ItemList_row].ToString()); //印出有ｘ的值
-                    ItemList_col.Add(i);
-                    dr2 = dt2.NewRow();
-                    for (int j = 0; j < dt.Columns.Count; j++)
+                    //Console.Write("{0} = {1},",i,dt.Columns[i].ColumnName);
+                    if (dt.Columns[i].ColumnName == config) //選擇config
                     {
-                        //Console.Write("({0},{1}) = {2}, ",i,j,dt.Rows[i][j]);
-                        //Console.Write(dt.Rows[i][j]+", ");
-                        dr2[j] = dt.Rows[i][j];
+                        //Console.WriteLine("{0} site= {1}", dt.Columns[i].ColumnName, i);
+                        ItemList_row = i;
                     }
-                    dt2.Rows.Add(dr2);
-                    //Console.Write("\n\n");
                 }
-            }
-            //Console.Write("\n\n");
 
+                //根據config位置找出row並儲存到dt2
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+
+                    //尋找X位置,並儲存那一列
+                    if (dt.Rows[i][ItemList_row].ToString().ToUpper() == "X")
+                    {
+                        dr2 = dt2.NewRow();
+                        for (int j = 0; j < dt.Columns.Count; j++)
+                        {
+                            dr2[j] = dt.Rows[i][j];
+                        }
+                        dt2.Rows.Add(dr2);
+                    }
+                }
+                db.Add(config, dt2); //建立CONFIG和對應零件到HashTable
+            }
+            //DisplayDT(dt2); //列印dt2值
+
+            //DisplayHash(db);
+        }
+        
+        public void DataTableToExcel()
+        {
+
+            string[] item_out = new string[] {"VENDOR", "CONFIG", "NOTES" };
+            string component = "COMPONENT";
+            DataRow dr = null;
+
+            //建立一個columns=vendor,config,notes的欄位
+            DataTable dt_items = new DataTable();
+            dt_items.Columns.Add(new DataColumn("vendor"));
+            dt_items.Columns.Add(new DataColumn("config"));
+            dt_items.Columns.Add(new DataColumn("notes"));
+            int item_site = 0;
+
+            foreach (DictionaryEntry one in db) //hashtable read by config
+            {
+                Console.WriteLine("key = " + one.Key);
+                DataTable value = (DataTable)one.Value;
+
+                for (int k = 0; k < value.Columns.Count; k++) //search columns(欄位標題)
+                {
+                    if (value.Columns[k].ColumnName.ToUpper() == component) //為component
+                    {
+                        item_site = k;
+                        for (int i = 0; i < value.Rows.Count; i++) //讀這一列
+                        {
+                            int m = 0;
+                            Console.WriteLine(value.Rows[i][k].ToString() + ","); //從這裡開始，建立一個dt根據每個compnonet去存
+                            DataTable dt_item;
+                            dt_item = dt_items.Clone();
+
+                            //建立一個新行-->對應dt_item.Rows.Add(dr)
+                            dr = dt_item.NewRow();
+                            foreach (string items in item_out) //搜尋要找的欄位標題
+                            {   
+                                for (int n = 0; n < value.Columns.Count; n++)
+                                {
+                                    if (value.Columns[n].ColumnName.ToUpper() == items.ToUpper())
+                                    {       
+                                        //int _item_site = n;
+                                        Console.WriteLine("m="+m+","+value.Rows[i][n].ToString());
+                                        dr[m] = value.Rows[i][n];
+                                        m += 1;
+                                    }
+                                }
+                            }
+                            dt_item.Rows.Add(dr);
+                            DisplayDT(dt_item);
+                            Console.WriteLine("********************");
+                        }
+                    }
+                }
+                Console.WriteLine("--------------------");
+            }
+            Console.Read();
+        }
+
+        public static int DisplayDT(DataTable dt)
+        {
             //for (int i = 0; i < dt.Columns.Count; i++)
             //{
             //    Console.Write(dt.Columns[i].ColumnName+", ");
             //}
-
             //Console.Write("\n\n");
-
-            //for (int i = 0; i < dt2.Rows.Count; i++)
-            //{
-            //    for (int j = 0; j < dt2.Columns.Count; j++)
-            //    {
-            //        Console.Write(dt2.Rows[i][j].ToString() + ", ");
-            //    }
-            //    Console.Write("\n\n");
-            //}
-
-            dt_out.Add(config, dt2);
-
-            foreach (DictionaryEntry one in dt_out)
+            for (int i = 0; i < dt.Rows.Count; i++)
             {
-                Console.WriteLine(one.Key);
+                for (int j = 0; j < dt.Columns.Count; j++)
+                {
+                    Console.WriteLine("({0},{1}) = {2}",i,j,dt.Rows[i][j].ToString());
+                }
+            }
+            //Console.WriteLine("\n"+dt.Rows.Count);
+            //Console.WriteLine(dt.Columns.Count);
+            //Console.Read();
+            return 0;
+        }
+
+        public static int DisplayHash(Hashtable ht)
+        {
+            foreach (DictionaryEntry one in ht)
+            {
+                Console.WriteLine("key = " + one.Key);
                 DataTable value = (DataTable)one.Value;
                 for (int i = 0; i < value.Rows.Count; i++)
                 {
                     for (int j = 0; j < value.Columns.Count; j++)
                     {
-                        Console.Write(value.Rows[i][j].ToString()+",");
+                        Console.Write(value.Rows[i][j].ToString() + ",");
                     }
                     Console.Write("\n\n");
                 }
-
             }
-
-            //foreach (object prime in dt_list) // Loop through List with foreach
-            //{
-            //    Console.Write(prime+", ");
-            //}
-
-            //Console.WriteLine("\n"+dt.Rows.Count);
-            //Console.WriteLine(dt.Columns.Count);
             Console.Read();
-        }
-
-        //sample
-        public DataTable GetDataTableFromExcelFile()
-        {
-            FileStream fs = null;
-            DataTable dt = new DataTable();
-            try
-            {
-                IWorkbook wb = null;
-                fs = File.Open(fileName, FileMode.Open, FileAccess.Read);
-                switch (Path.GetExtension(fileName).ToUpper())
-                {
-                    case ".XLS":
-                        {
-                            wb = new HSSFWorkbook(fs);
-                        }
-                        break;
-                    case ".XLSX":
-                        {
-                            wb = new XSSFWorkbook(fs);
-                        }
-                        break;
-                }
-                if (wb.NumberOfSheets > 0)
-                {
-                    ISheet sheet = wb.GetSheetAt(0);
-                    IRow headerRow = sheet.GetRow(0);
-
-                    //處理標題列
-                    for (int i = headerRow.FirstCellNum; i < headerRow.LastCellNum; i++)
-                    {
-                        dt.Columns.Add(headerRow.GetCell(i).StringCellValue.Trim());
-                    }
-
-                    IRow row = null;
-                    DataRow dr = null;
-                    CellType ct = CellType.Blank;
-                    
-                    //標題列之後的資料
-                    for (int i = sheet.FirstRowNum + 1; i <= sheet.LastRowNum; i++)
-                    {
-                        dr = dt.NewRow();
-                        row = sheet.GetRow(i);
-                        if (row == null) continue;
-                        for (int j = row.FirstCellNum; j < row.LastCellNum; j++)
-                        {
-                            ct = row.GetCell(j).CellType;
-                            //如果此欄位格式為公式 則去取得CachedFormulaResultType
-                            if (ct == CellType.Formula)
-                            {
-                                ct = row.GetCell(j).CachedFormulaResultType;
-                            }
-                            if (ct == CellType.Numeric)
-                            {
-                                dr[j] = row.GetCell(j).NumericCellValue;
-                            }
-                            else
-                            {
-                                dr[j] = row.GetCell(j).ToString().Replace("$", "");
-                            }
-                        }
-                        dt.Rows.Add(dr);
-                    }
-                }
-                fs.Close();
-            }
-            finally
-            {
-                if (fs != null) fs.Dispose();
-            }
-            return dt;
+            return 0;
         }
     }
 
@@ -389,15 +365,16 @@ namespace BOM_Matrix_cmd
             DataTable dt = new DataTable();
             
             //read excel path
-            string file = "C:\\Panda_2.xlsx";
+            string file = "C:\\Panda.xlsx";
             _EXCEL excel = new _EXCEL(file);
-            
+
             //read excel config data to Datatable and arrayList
             excel.ExcelToConfig();
 
             //read excel item data to Datatable
             dt = excel.ExcelToDataTable();
-            excel.DisplayDataTable(dt,"G37");
+            excel.DataTableToHashTable(dt);
+            excel.DataTableToExcel();
 
             //excel.DisplayDataTable(excel.ExcelToDataTable());
             //excel.DisplayDataTable(excel.GetDataTableFromExcelFile());
