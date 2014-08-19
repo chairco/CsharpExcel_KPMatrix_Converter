@@ -35,8 +35,8 @@ namespace BOM_Matrix_cmd
         public List<string> configList = new List<string>(); //存config
         public List<string> complist = new List<string>(); //存component
         public Hashtable db = new Hashtable(); //根據config存component
-        public Hashtable db_comp = new Hashtable();
-        public Hashtable db_config = new Hashtable();
+        public Hashtable db_comp = new Hashtable(); //存component+整理過的datatable
+        public Hashtable db_config = new Hashtable(); //存confgi+db_comp
 
         public _EXCEL(string fileName)
         {
@@ -60,7 +60,7 @@ namespace BOM_Matrix_cmd
                     wk = new HSSFWorkbook(fs);
                 }
 
-                Console.WriteLine("Config寫入記憶體");
+                Console.WriteLine("開始將Config寫入記憶體");
                 //因為只有一個Sheet
                 for (int k = 0; k < wk.NumberOfSheets; k++)
                 {
@@ -129,7 +129,7 @@ namespace BOM_Matrix_cmd
                     DataRow dr = null;
                     CellType ct = CellType.Blank;
 
-                    Console.WriteLine("Item寫入記憶體\n");
+                    Console.WriteLine("開始將Item寫入記憶體\n");
                     //開始讀表格,一列開始讀(row,x軸)再讀行(其實是讀每個cell)
                     for (int i = st.FirstRowNum; i <= st.LastRowNum; i++)
                     {
@@ -168,7 +168,15 @@ namespace BOM_Matrix_cmd
                                     if (column_flag && dt_flag)
                                     {
                                         //Console.WriteLine("Column座標 ({0},{1}) = {2}", i, j, value);
-                                        dt.Columns.Add(row.GetCell(j).StringCellValue.Trim());
+                                        if (dt.Columns.Contains(row.GetCell(j).StringCellValue.Trim()))
+                                        {
+                                            string temp = row.GetCell(j).StringCellValue.Trim() + "_2";
+                                            dt.Columns.Add(temp);
+                                        }
+                                        else
+                                        {
+                                            dt.Columns.Add(row.GetCell(j).StringCellValue.Trim());
+                                        }
                                         dr[j] = row.GetCell(j);
                                     }
                                     //內容
@@ -256,27 +264,29 @@ namespace BOM_Matrix_cmd
                 db.Add(config, dt2); //建立CONFIG和對應零件到HashTable
             }
             //DisplayDT(dt2); //列印dt2值
-
             //DisplayHash(db);
         }
         
         public void DataTableToExcel()
         {
 
-            string[] item_out = new string[] {"VENDOR", "CONFIG", "NOTES" };
+            string[] item_out = new string[] {"VENDOR", "CONFIG" };
             string component = "COMPONENT";
+
+
             DataRow dr = null;
 
             //建立一個columns=vendor,config,notes的欄位
             DataTable dt_items = new DataTable();
             dt_items.Columns.Add(new DataColumn("vendor"));
             dt_items.Columns.Add(new DataColumn("config"));
-            dt_items.Columns.Add(new DataColumn("notes"));
+            //dt_items.Columns.Add(new DataColumn("notes"));
             int item_site = 0;
 
             foreach (DictionaryEntry one in db) //hashtable read by config
             {
-                Console.WriteLine("key = " + one.Key);
+                string config_Key = one.Key.ToString();
+                //Console.WriteLine("CONFIG = " + one.Key);
                 DataTable value = (DataTable)one.Value;
 
                 for (int k = 0; k < value.Columns.Count; k++) //search columns(欄位標題)
@@ -287,7 +297,9 @@ namespace BOM_Matrix_cmd
                         for (int i = 0; i < value.Rows.Count; i++) //讀這一列
                         {
                             int m = 0;
-                            Console.WriteLine(value.Rows[i][k].ToString() + ","); //從這裡開始，建立一個dt根據每個compnonet去存
+                            string comp_hash_key = value.Rows[i][k].ToString();
+                            
+                            //Console.WriteLine(value.Rows[i][k].ToString() + ","); //從這裡開始，建立一個dt根據每個compnonet去存
                             DataTable dt_item;
                             dt_item = dt_items.Clone();
 
@@ -300,23 +312,104 @@ namespace BOM_Matrix_cmd
                                     if (value.Columns[n].ColumnName.ToUpper() == items.ToUpper())
                                     {       
                                         //int _item_site = n;
-                                        Console.WriteLine("m="+m+","+value.Rows[i][n].ToString());
+                                        //Console.WriteLine("m="+m+","+value.Rows[i][n].ToString());
                                         dr[m] = value.Rows[i][n];
                                         m += 1;
                                     }
                                 }
                             }
                             dt_item.Rows.Add(dr);
-                            DisplayDT(dt_item);
-                            Console.WriteLine("********************");
+                            db_comp.Add(comp_hash_key, dt_item);
+                            //DisplayDT(dt_item);
+                            //Console.WriteLine("********************");
                         }
+                        //DisplayHash(db_comp);
+                        //Console.WriteLine(db_comp.Count);
+                        object db_comp_cp = db_comp.Clone(); //建立一個Hashtable來接,不然db_comp.clear()會把所有資料清掉
+                        db_config.Add(config_Key, db_comp_cp);
+                        //Console.WriteLine("********************");
                     }
+                    db_comp.Clear();
                 }
-                Console.WriteLine("--------------------");
+                //Console.WriteLine("--------------------");
             }
+            
+            WriteExcel();
             Console.Read();
         }
 
+        public void WriteExcel()
+        {
+            Boolean ck_comp = false, ck_comp2 = false ;
+            
+            String data = null;
+            int x = 0, y = 0; //(x,y)
+            IWorkbook wk = null;
+            wk = new XSSFWorkbook();
+            
+            // 新增試算表
+            //wk.CreateSheet("試算表 A");
+
+            //有資料內容的試算表
+            XSSFSheet sheet1 = (XSSFSheet)wk.CreateSheet("Sheet1");
+
+            //根據預先儲存的component去尋找每一個config
+            foreach (string list in complist)
+            {
+                Console.WriteLine(list);
+                if (!ck_comp)
+                {
+                    sheet1.CreateRow(x + 1); //第x+1行
+                    sheet1.GetRow(x + 1).CreateCell(y + 1).SetCellValue("Config Name");
+                    ck_comp = true;
+                }
+                sheet1.CreateRow(x + 2);
+                sheet1.GetRow(x + 2).CreateCell(y + 1).SetCellValue(list); //寫入EXCEL //第n+2行
+                
+                //開始一個一個去讀config
+                foreach (DictionaryEntry config_key in db_config) //CONFIG
+                {
+                    //Console.WriteLine("CONFIG = " + config_key.Key.ToString());
+                    foreach (DictionaryEntry value in (Hashtable)config_key.Value) //COMP
+                    {
+                        if(value.Key.ToString().ToUpper() == list.ToString().ToUpper())
+                        {
+                            //Console.WriteLine("COMP = " + value.Key.ToString());
+                            DataTable values = (DataTable)value.Value;
+                            data = null;
+                            for (int i = 0; i < values.Rows.Count; i++)
+                            {
+                                for (int j = 0; j < values.Columns.Count; j++)
+                                {
+                                    //Console.Write(values.Rows[i][j].ToString() + ",");
+                                    data += values.Rows[i][j].ToString() + ";";
+                                }
+                            }
+                            Console.WriteLine("value=" + data);
+                            //Console.WriteLine("value site = ({0},{1})", x+2, y+2);
+                            
+                            //寫入config欄位
+                            if (!ck_comp2)
+                            {
+                                sheet1.GetRow(x + 1).CreateCell(y + 2).SetCellValue(config_key.Key.ToString());
+                            }
+                            sheet1.GetRow(x + 2).CreateCell(y + 2).SetCellValue(data);//寫入數值(component內容)
+                            y += 1;
+                            break;
+                        }
+                    }
+                }
+                ck_comp2 = true;
+                y = 0;
+                x += 1;
+            }
+
+            FileStream file = new FileStream(@"C:\NPOI.xlsx", FileMode.Create);
+            wk.Write(file);
+            file.Close();
+
+        }
+        
         public static int DisplayDT(DataTable dt)
         {
             //for (int i = 0; i < dt.Columns.Count; i++)
@@ -349,10 +442,9 @@ namespace BOM_Matrix_cmd
                     {
                         Console.Write(value.Rows[i][j].ToString() + ",");
                     }
-                    Console.Write("\n\n");
+                    Console.Write("\n");
                 }
             }
-            Console.Read();
             return 0;
         }
     }
@@ -365,7 +457,7 @@ namespace BOM_Matrix_cmd
             DataTable dt = new DataTable();
             
             //read excel path
-            string file = "C:\\Panda.xlsx";
+            string file = "C:\\PANDA5.xlsx";
             _EXCEL excel = new _EXCEL(file);
 
             //read excel config data to Datatable and arrayList
