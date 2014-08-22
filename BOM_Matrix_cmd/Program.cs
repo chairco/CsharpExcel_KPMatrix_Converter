@@ -27,11 +27,30 @@ ICSharpCode.SharpZipLib.DLL：檔案壓縮函式庫。
 
 namespace BOM_Matrix_cmd
 {
-    class _EXCEL
+    class MLB
     {
+
+    }
+
+    class FATP
+    {
+
+    }
+    
+    public class data_list
+    {
+        public string FATP { get; set; }
+        public string MLB { get; set; }
+    }
+    
+    public class _EXCEL
+    {
+        private static List<data_list> _fatp = new List<data_list>();
+        
         private string fileName = null; // Data name
         private string Datasource = null;
-        
+
+        public List<string> INI = new List<string>();
         public List<string> configList = new List<string>(); //存config
         public List<string> complist = new List<string>(); //存component
         public Hashtable db = new Hashtable(); //根據config存component
@@ -59,8 +78,8 @@ namespace BOM_Matrix_cmd
                 {
                     wk = new HSSFWorkbook(fs);
                 }
-
                 Console.WriteLine("開始將Config寫入記憶體");
+                
                 //因為只有一個Sheet
                 for (int k = 0; k < wk.NumberOfSheets; k++)
                 {
@@ -86,8 +105,7 @@ namespace BOM_Matrix_cmd
                                     //Console.Write(value + ",");
                                     if(i==2 && j>=30)
                                     {
-                                        //Console.WriteLine(value);
-                                        configList.Add(value);
+                                        if (value != "CONFIGS") configList.Add(value);
                                     }
                                 }
                             }
@@ -101,7 +119,7 @@ namespace BOM_Matrix_cmd
             return dt;
         }
         
-        public DataTable ExcelToDataTable()
+        public DataTable ExcelToDataTable(int comp_cell, bool mode)
         {
             DataTable dt = new DataTable();
             IWorkbook wk = null;
@@ -109,6 +127,7 @@ namespace BOM_Matrix_cmd
             Boolean dt_flag = false;
             String Item_value = null;
             String Comp_value = null;
+            int count = 2; //用來紀錄重複config key
             
             using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite))
             {
@@ -158,10 +177,17 @@ namespace BOM_Matrix_cmd
                                         dr[j] = Item_value;
                                         break;
                                     }
-                                    if (dt_flag && row.GetCell(2).CellType.ToString() != "Blank")　//直向要判斷是否有新的值
+                                    if (dt_flag && row.GetCell(comp_cell).CellType.ToString() != "Blank")　//直向要判斷是否有新的值
                                     {
-                                        Comp_value = row.GetCell(2).ToString().ToUpper();
-                                        if (!complist.Contains(Comp_value) && Comp_value != "COMPONENT") complist.Add(Comp_value);
+                                        Comp_value = row.GetCell(comp_cell).ToString().ToUpper();
+                                        if (mode)
+                                        {
+                                            if (!complist.Contains(Comp_value) && Comp_value != "COMPONENT") complist.Add(Comp_value);
+                                        }
+                                        else if (!mode)
+                                        {
+                                            if (!complist.Contains(Comp_value) && Comp_value != "REF DES") complist.Add(Comp_value);
+                                        }
                                     }
 
                                     //標題
@@ -170,8 +196,9 @@ namespace BOM_Matrix_cmd
                                         //Console.WriteLine("Column座標 ({0},{1}) = {2}", i, j, value);
                                         if (dt.Columns.Contains(row.GetCell(j).StringCellValue.Trim()))
                                         {
-                                            string temp = row.GetCell(j).StringCellValue.Trim() + "_2";
+                                            string temp = row.GetCell(j).StringCellValue.Trim() + "_" + count;
                                             dt.Columns.Add(temp);
+                                            count++;
                                         }
                                         else
                                         {
@@ -187,7 +214,7 @@ namespace BOM_Matrix_cmd
                                         {
                                             dr[j] = Item_value;
                                         }
-                                        else if (j == 2)
+                                        else if (j == comp_cell)
                                         {
                                             dr[j] = Comp_value;
                                         }
@@ -221,6 +248,7 @@ namespace BOM_Matrix_cmd
                 wk = null; //全部Sheet讀完關閉Excel
                 fs.Close();
             }
+            //DisplayDT(dt);
             return dt;
         }
 
@@ -232,6 +260,7 @@ namespace BOM_Matrix_cmd
             //根據存在list config一個一個讀出所有數據並存在HashTable
             foreach(string config in configList)
             {
+                //Console.WriteLine(config);
                 DataTable dt2;
                 dt2 = dt.Clone(); //dt2建立一個和dt一樣的schmea,不包含rows data只包含columns data
 
@@ -249,9 +278,8 @@ namespace BOM_Matrix_cmd
                 //根據config位置找出row並儲存到dt2
                 for (int i = 0; i < dt.Rows.Count; i++)
                 {
-
-                    //尋找X位置,並儲存那一列
-                    if (dt.Rows[i][ItemList_row].ToString().ToUpper() == "X")
+                    //FATP尋找X位置,並儲存那一列;如果是MLB尋找是1位置,並儲存那一列
+                    if (dt.Rows[i][ItemList_row].ToString().ToUpper() == "X" || dt.Rows[i][ItemList_row].Equals("1"))
                     {
                         dr2 = dt2.NewRow();
                         for (int j = 0; j < dt.Columns.Count; j++)
@@ -261,27 +289,39 @@ namespace BOM_Matrix_cmd
                         dt2.Rows.Add(dr2);
                     }
                 }
+                //DisplayDT(dt2); //列印dt2值
                 db.Add(config, dt2); //建立CONFIG和對應零件到HashTable
             }
-            //DisplayDT(dt2); //列印dt2值
             //DisplayHash(db);
         }
         
-        public void DataTableToExcel()
+        public void DataTableToExcel(bool mode)
         {
-
-            string[] item_out = new string[] {"VENDOR", "CONFIG" };
-            string component = "COMPONENT";
-
+            string[] item_out = null;
+            string component = null;
+            int item_site = 0;
 
             DataRow dr = null;
-
             //建立一個columns=vendor,config,notes的欄位
             DataTable dt_items = new DataTable();
-            dt_items.Columns.Add(new DataColumn("vendor"));
-            dt_items.Columns.Add(new DataColumn("config"));
-            //dt_items.Columns.Add(new DataColumn("notes"));
-            int item_site = 0;
+
+            if (mode)
+            {
+                item_out = new string[] { "VENDOR", "CONFIG" };
+                component = "COMPONENT";
+                dt_items.Columns.Add(new DataColumn("vendor"));
+                dt_items.Columns.Add(new DataColumn("config"));
+                //dt_items.Columns.Add(new DataColumn("notes"));
+            }
+            if (!mode)
+            {
+                item_out = new string[] { "SIDE", "MFR PN", "VENDOR", "MC Comment" };
+                component = "REF DES";
+                dt_items.Columns.Add(new DataColumn("side"));
+                dt_items.Columns.Add(new DataColumn("mfr pn"));
+                dt_items.Columns.Add(new DataColumn("vendor"));
+                dt_items.Columns.Add(new DataColumn("mc comment"));
+            }
 
             foreach (DictionaryEntry one in db) //hashtable read by config
             {
@@ -291,7 +331,7 @@ namespace BOM_Matrix_cmd
 
                 for (int k = 0; k < value.Columns.Count; k++) //search columns(欄位標題)
                 {
-                    if (value.Columns[k].ColumnName.ToUpper() == component) //為component
+                    if (value.Columns[k].ColumnName.ToUpper() == component.ToUpper()) //為component
                     {
                         item_site = k;
                         for (int i = 0; i < value.Rows.Count; i++) //讀這一列
@@ -319,7 +359,7 @@ namespace BOM_Matrix_cmd
                                 }
                             }
                             dt_item.Rows.Add(dr);
-                            db_comp.Add(comp_hash_key, dt_item);
+                            if (!db_comp.ContainsKey(comp_hash_key)) db_comp.Add(comp_hash_key, dt_item);
                             //DisplayDT(dt_item);
                             //Console.WriteLine("********************");
                         }
@@ -333,15 +373,13 @@ namespace BOM_Matrix_cmd
                 }
                 //Console.WriteLine("--------------------");
             }
-            
             WriteExcel();
-            Console.Read();
+            //Console.Read();
         }
 
         public void WriteExcel()
         {
             Boolean ck_comp = false, ck_comp2 = false ;
-            
             String data = null;
             int x = 0, y = 0; //(x,y)
             IWorkbook wk = null;
@@ -354,9 +392,10 @@ namespace BOM_Matrix_cmd
             XSSFSheet sheet1 = (XSSFSheet)wk.CreateSheet("Sheet1");
 
             //根據預先儲存的component去尋找每一個config
-            foreach (string list in complist)
+            //foreach (string list in INI)
+            foreach (string list in complist) //原本是抓全部
             {
-                Console.WriteLine(list);
+                //Console.WriteLine(list);
                 if (!ck_comp)
                 {
                     sheet1.CreateRow(x + 1); //第x+1行
@@ -385,7 +424,7 @@ namespace BOM_Matrix_cmd
                                     data += values.Rows[i][j].ToString() + ";";
                                 }
                             }
-                            Console.WriteLine("value=" + data);
+                            //Console.WriteLine("value=" + data);
                             //Console.WriteLine("value site = ({0},{1})", x+2, y+2);
                             
                             //寫入config欄位
@@ -404,26 +443,37 @@ namespace BOM_Matrix_cmd
                 x += 1;
             }
 
-            FileStream file = new FileStream(@"C:\NPOI.xlsx", FileMode.Create);
-            wk.Write(file);
-            file.Close();
-
+            try
+            {
+                FileStream file = new FileStream(@"output.xlsx", FileMode.Create);
+                wk.Write(file);
+                file.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("儲存檔案出錯，檔案可能正在使用" + Environment.NewLine + ex.Message);
+            }
         }
         
         public static int DisplayDT(DataTable dt)
         {
+            Console.WriteLine("DisPlay DataTable");
             //for (int i = 0; i < dt.Columns.Count; i++)
             //{
-            //    Console.Write(dt.Columns[i].ColumnName+", ");
+            //    Console.Write(dt.Columns[i].ColumnName + ", ");
             //}
             //Console.Write("\n\n");
+
             for (int i = 0; i < dt.Rows.Count; i++)
             {
                 for (int j = 0; j < dt.Columns.Count; j++)
                 {
-                    Console.WriteLine("({0},{1}) = {2}",i,j,dt.Rows[i][j].ToString());
+                    //Console.WriteLine("({0},{1}) = {2}",i,j,dt.Rows[i][j].ToString());
+                    Console.Write("({0},{1}) = {2}", i, j, dt.Rows[i][j].ToString()+", ");
                 }
+                Console.WriteLine("\n------------");
             }
+            Console.WriteLine("\n************");
             //Console.WriteLine("\n"+dt.Rows.Count);
             //Console.WriteLine(dt.Columns.Count);
             //Console.Read();
@@ -447,29 +497,153 @@ namespace BOM_Matrix_cmd
             }
             return 0;
         }
+
+        public void ReadINI(bool mode)
+        {
+            List<string> INI = new List<string>();
+            string[] lines = null;
+            if (mode)
+            {
+                lines = System.IO.File.ReadAllLines(@"FATP.txt");
+            }
+            else if (!mode)
+            {
+                lines = System.IO.File.ReadAllLines(@"MLB.txt");
+            }
+
+            ////Display the file contents by using a foreach loop.
+            //System.Console.WriteLine("Contents of WriteLines2.txt = ");
+            foreach (string line in lines)
+            {
+                // Use a tab to indent each line of the file.
+                string[] str = line.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (string str2 in str)
+                {
+                    Console.Write(str2+", ");
+                    INI.Add(str2);
+                }
+                //_fatp.Add(new data_list() { FATP = line});
+            }
+            Console.Write("\n");
+            //// Keep the console window open in debug mode.
+            //Console.WriteLine("Press any key to exit.");
+            //System.Console.ReadKey();
+        }
     }
 
     class Program
     {
+        /*
         //main program
         static void Main(string[] args)
         {
             DataTable dt = new DataTable();
-            
+
             //read excel path
-            string file = "C:\\PANDA5.xlsx";
+            string file = "C:\\PANDA.xlsx";
             _EXCEL excel = new _EXCEL(file);
+
+            excel.ReadINI();
 
             //read excel config data to Datatable and arrayList
             excel.ExcelToConfig();
 
             //read excel item data to Datatable
-            dt = excel.ExcelToDataTable();
+            //dt = excel.ExcelToDataTable(1, false);
+            dt = excel.ExcelToDataTable(2, true);
             excel.DataTableToHashTable(dt);
-            excel.DataTableToExcel();
+            excel.DataTableToExcel(true);
+
+            Console.WriteLine("Press any key to exit.");
+            System.Console.ReadKey();
 
             //excel.DisplayDataTable(excel.ExcelToDataTable());
             //excel.DisplayDataTable(excel.GetDataTableFromExcelFile());
+        }
+        */
+        
+        static bool blNoLogo = false;
+        static bool blNoClearScreen = false;
+        static bool blParameterOK = false;
+        static bool blResult = false;
+        static int nErrorLevel = 255;
+
+        //static bool blPause = false;
+        static void Main(string[] args)
+        {
+            try
+            {
+                for (int i = 0; i <= args.GetUpperBound(0); i++)
+                {
+                    if (string.Compare(args[i], "-nl", true) == 0)
+                    {
+                        blNoLogo = true;
+                        blNoClearScreen = true;
+                        continue;
+                    }
+                }
+
+                if (!blNoLogo)
+                    Diags.Logo(blNoLogo, !blNoClearScreen);
+
+                for (int i = 0; i <= args.GetUpperBound(0); i++)
+                {
+                    if (string.Compare(args[i], "-erv", true) == 0)
+                    {
+                        if (args.GetUpperBound(0) > i)
+                            nErrorLevel = int.Parse(args[i + 1]);
+                        continue;
+                    }
+                }
+
+                for (int i = 0; i <= args.GetUpperBound(0); i++)
+                {
+                    if (string.Compare(args[i], "/?", true) == 0)
+                    {
+                        Diags.ReadMe(blNoLogo);
+                        continue;
+                    }
+                    else if (string.Compare(args[i], "/C", true) == 0)
+                    {
+                        _main(args[i + 1].ToString());
+                        blParameterOK = true;
+                    }
+                }
+                if (!blParameterOK)
+                    Diags.ReadMe(blNoLogo);
+            }
+            catch (Exception ex)
+            {
+                Console.Write("缺少目標檔案: ");
+                Console.WriteLine(ex.Message);
+            }
+            finally
+            {
+                if (blParameterOK && blResult)
+                    Diags.End(0, blNoLogo);
+                else
+                    Diags.End(nErrorLevel, blNoLogo);
+            }
+        }
+
+        static void _main(string file)
+        {
+            bool mode = true; //1,false; 2,true
+            DataTable dt = new DataTable();
+            //read excel path
+            ////string file = "C:\\PANDA5.xlsx";
+            _EXCEL excel = new _EXCEL(file);
+
+            excel.ReadINI(mode);
+        
+            //read excel config data to Datatable and arrayList
+            excel.ExcelToConfig();
+
+            //read excel item data to Datatable
+            //dt = excel.ExcelToDataTable(1, mode);
+            dt = excel.ExcelToDataTable(2, mode);
+            excel.DataTableToHashTable(dt);
+            excel.DataTableToExcel(mode);
         }
     }
 }
