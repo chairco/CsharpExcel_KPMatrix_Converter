@@ -26,34 +26,15 @@ ICSharpCode.SharpZipLib.DLL：檔案壓縮函式庫。
 */
 
 namespace BOM_Matrix_cmd
-{
-    class MLB
-    {
-
-
-    }
-
-    class FATP
-    {
-
-    }
-    
-    public class data_list
-    {
-        public string FATP { get; set; }
-        public string MLB { get; set; }
-    }
-    
+{    
     public class _EXCEL
-    {
-        private static List<data_list> _fatp = new List<data_list>();
-        
+    {        
         private string fileName = null; // Data name
         private string Datasource = null;
 
-        public List<string> INI = new List<string>();
         public List<string> configList = new List<string>(); //存config
         public List<string> complist = new List<string>(); //存component
+        
         public Hashtable db = new Hashtable(); //根據config存component
         public Hashtable db_comp = new Hashtable(); //存component+整理過的datatable
         public Hashtable db_config = new Hashtable(); //存confgi+db_comp
@@ -64,66 +45,54 @@ namespace BOM_Matrix_cmd
             this.Datasource = fileName;
         }
 
-        //將config 29~31的內容存入DataTable
-        public DataTable ExcelToConfig()
+        public static int DisplayDT(DataTable dt)
         {
-            DataTable dt = new DataTable();
-            IWorkbook wk = null;
-            using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite))
+            Console.WriteLine("DisPlay DataTable");
+            //for (int i = 0; i < dt.Columns.Count; i++)
+            //{
+            //    Console.Write(dt.Columns[i].ColumnName + ", ");
+            //}
+            //Console.Write("\n\n");
+
+            for (int i = 0; i < dt.Rows.Count; i++)
             {
-                if (Datasource.Contains(".xlsx")) //2007
+                for (int j = 0; j < dt.Columns.Count; j++)
                 {
-                    wk = new XSSFWorkbook(fs);
+                    //Console.WriteLine("({0},{1}) = {2}",i,j,dt.Rows[i][j].ToString());
+                    Console.Write("({0},{1}) = {2}", i, j, dt.Rows[i][j].ToString() + ", ");
                 }
-                else //2003
-                {
-                    wk = new HSSFWorkbook(fs);
-                }
-                Console.WriteLine("開始將Config寫入記憶體");
-                
-                //因為只有一個Sheet
-                for (int k = 0; k < wk.NumberOfSheets; k++)
-                {
-                    ISheet st = wk.GetSheetAt(k);
-                    IRow row = null;
-                    String value = null;
-                    DataRow dr = null;
-
-                    //開始讀表格,一列開始讀(row,x軸)再讀行(其實是讀每個cell)
-                    for (int i = st.FirstRowNum + 1; i <= 30; i++)
-                    {
-                        dr = dt.NewRow();
-                        row = st.GetRow(i);
-
-                        if (row != null)
-                        {
-                            for (int j = 29; j < row.LastCellNum; j++)
-                            {
-                                if (row.GetCell(j) != null) //解決跨行cell是空值問題
-                                {
-                                    value = row.GetCell(j).ToString().ToUpper();
-                                    //Console.Write("({0},{1})={2}, ",i,j,value);
-                                    //Console.Write(value + ",");
-                                    if(i==2 && j>=30)
-                                    {
-                                        if (value != "CONFIGS") configList.Add(value);
-                                    }
-                                }
-                            }
-                            //Console.Write("\n");
-                        }
-                    }
-                }
-                wk = null; //全部Sheet讀完關閉Excel
-                fs.Close();
+                Console.WriteLine("\n------------");
             }
-            return dt;
+            Console.WriteLine("\n************");
+            //Console.WriteLine("\n"+dt.Rows.Count);
+            //Console.WriteLine(dt.Columns.Count);
+            //Console.Read();
+            return 0;
+        }
+
+        public static int DisplayHash(Hashtable ht)
+        {
+            foreach (DictionaryEntry one in ht)
+            {
+                Console.WriteLine("key = " + one.Key);
+                DataTable value = (DataTable)one.Value;
+                for (int i = 0; i < value.Rows.Count; i++)
+                {
+                    for (int j = 0; j < value.Columns.Count; j++)
+                    {
+                        Console.Write(value.Rows[i][j].ToString() + ",");
+                    }
+                    Console.Write("\n");
+                }
+            }
+            return 0;
         }
         
-        public DataTable ExcelToDataTable(int comp_cell, bool mode)
+        public DataTable ExcelToDataTable(int comp_cell, bool mode, bool config)
         {
             DataTable dt = new DataTable();
             IWorkbook wk = null;
+            
             Boolean column_flag = false;
             Boolean dt_flag = false;
             String Item_value = null;
@@ -149,100 +118,131 @@ namespace BOM_Matrix_cmd
                     DataRow dr = null;
                     CellType ct = CellType.Blank;
 
-                    Console.WriteLine("開始將Item寫入記憶體\n");
-                    //開始讀表格,一列開始讀(row,x軸)再讀行(其實是讀每個cell)
-                    for (int i = st.FirstRowNum; i <= st.LastRowNum; i++)
+                    if (!config)
                     {
-                        dr = dt.NewRow();
-                        row = st.GetRow(i);
-
-                        if (row != null)
+                        Console.WriteLine("開始將Item寫入記憶體\n");
+                        //開始讀表格,一列開始讀(row,x軸)再讀行(其實是讀每個cell)
+                        for (int i = st.FirstRowNum; i <= st.LastRowNum; i++)
                         {
-                            for (int j = row.FirstCellNum; j < row.LastCellNum; j++)
+                            dr = dt.NewRow();
+                            row = st.GetRow(i);
+
+                            if (row != null)
                             {
-                                if (row.GetCell(j) != null) //解決跨行cell是空值問題
+                                for (int j = row.FirstCellNum; j < row.LastCellNum; j++)
                                 {
-                                    value = row.GetCell(j).ToString().ToUpper();
+                                    if (row.GetCell(j) != null) //解決跨行cell是空值問題
+                                    {
+                                        value = row.GetCell(j).ToString().ToUpper();
 
-                                    //只抓從ITEM欄位開始的資料
-                                    if (value == "ITEM")
-                                    {
-                                        //Console.WriteLine("開始抓Column");
-                                        column_flag = true; //用來判斷標頭
-                                        dt_flag = true; //用來判斷開始抓入dt
-                                    }
-                                    //因為ITEM,COPMPNENT是一個跨行CELL將她獨立出來,加在每一個dt
-                                    if (dt_flag && row.GetCell(0).IsMergedCell)　//橫向只需要抓一遍就跳出
-                                    {
-                                        Item_value = row.GetCell(0).ToString().ToUpper();
-                                        dr[j] = Item_value;
-                                        break;
-                                    }
-                                    if (dt_flag && row.GetCell(comp_cell).CellType.ToString() != "Blank")　//直向要判斷是否有新的值
-                                    {
-                                        Comp_value = row.GetCell(comp_cell).ToString().ToUpper();
-                                        if (mode)
+                                        //只抓從ITEM欄位開始的資料
+                                        if (value == "ITEM")
                                         {
-                                            if (!complist.Contains(Comp_value) && Comp_value != "COMPONENT") complist.Add(Comp_value);
+                                            //Console.WriteLine("開始抓Column");
+                                            column_flag = true; //用來判斷標頭
+                                            dt_flag = true; //用來判斷開始抓入dt
                                         }
-                                        else if (!mode)
+                                        //因為ITEM,COPMPNENT是一個跨行CELL將她獨立出來,加在每一個dt
+                                        if (dt_flag && row.GetCell(0).IsMergedCell)　//橫向只需要抓一遍就跳出
                                         {
-                                            if (!complist.Contains(Comp_value) && Comp_value != "REF DES") complist.Add(Comp_value);
-                                        }
-                                    }
-
-                                    //標題
-                                    if (column_flag && dt_flag)
-                                    {
-                                        //Console.WriteLine("Column座標 ({0},{1}) = {2}", i, j, value);
-                                        if (dt.Columns.Contains(row.GetCell(j).StringCellValue.Trim()))
-                                        {
-                                            string temp = row.GetCell(j).StringCellValue.Trim() + "_" + count;
-                                            dt.Columns.Add(temp);
-                                            count++;
-                                        }
-                                        else
-                                        {
-                                            dt.Columns.Add(row.GetCell(j).StringCellValue.Trim());
-                                        }
-                                        dr[j] = row.GetCell(j);
-                                    }
-                                    //內容
-                                    if (!column_flag && dt_flag) //可能會有公式欄位,需要改個寫法
-                                    { 
-                                        //Console.WriteLine("Row座標 ({0},{1}) = {2}", i, j, value);
-                                        if (j == 0)
-                                        {
+                                            Item_value = row.GetCell(0).ToString().ToUpper();
                                             dr[j] = Item_value;
+                                            break;
                                         }
-                                        else if (j == comp_cell)
+                                        if (dt_flag && row.GetCell(comp_cell).CellType.ToString() != "Blank")　//直向要判斷是否有新的值
                                         {
-                                            dr[j] = Comp_value;
-                                        }
-                                        else
-                                        {
-                                            //dr[j] = value;//原本如果不做公式轉換，會有錯誤
-
-                                            ct = row.GetCell(j).CellType;
-                                            //如果此欄位格式為公式 則去取得CachedFormulaResultType
-                                            if (ct == CellType.Formula)
+                                            Comp_value = row.GetCell(comp_cell).ToString().ToUpper();
+                                            if (mode)
                                             {
-                                                ct = row.GetCell(j).CachedFormulaResultType;
+                                                if (!complist.Contains(Comp_value) && Comp_value != "COMPONENT") complist.Add(Comp_value);
                                             }
-                                            if (ct == CellType.Numeric)
+                                            else if (!mode)
                                             {
-                                                dr[j] = row.GetCell(j).NumericCellValue;
+                                                if (!complist.Contains(Comp_value) && Comp_value != "REF DES") complist.Add(Comp_value);
+                                            }
+                                        }
+
+                                        //標題
+                                        if (column_flag && dt_flag)
+                                        {
+                                            //Console.WriteLine("Column座標 ({0},{1}) = {2}", i, j, value);
+                                            if (dt.Columns.Contains(row.GetCell(j).StringCellValue.Trim()))
+                                            {
+                                                string temp = row.GetCell(j).StringCellValue.Trim() + "_" + count;
+                                                dt.Columns.Add(temp);
+                                                count++;
                                             }
                                             else
                                             {
-                                                dr[j] = row.GetCell(j).ToString().Replace("$", "");
+                                                dt.Columns.Add(row.GetCell(j).StringCellValue.Trim());
+                                            }
+                                            dr[j] = row.GetCell(j);
+                                        }
+                                        //內容
+                                        if (!column_flag && dt_flag) //可能會有公式欄位,需要改個寫法
+                                        {
+                                            //Console.WriteLine("Row座標 ({0},{1}) = {2}", i, j, value);
+                                            if (j == 0)
+                                            {
+                                                dr[j] = Item_value;
+                                            }
+                                            else if (j == comp_cell)
+                                            {
+                                                dr[j] = Comp_value;
+                                            }
+                                            else
+                                            {
+                                                //dr[j] = value;//原本如果不做公式轉換，會有錯誤
+
+                                                ct = row.GetCell(j).CellType;
+                                                //如果此欄位格式為公式 則去取得CachedFormulaResultType
+                                                if (ct == CellType.Formula)
+                                                {
+                                                    ct = row.GetCell(j).CachedFormulaResultType;
+                                                }
+                                                if (ct == CellType.Numeric)
+                                                {
+                                                    dr[j] = row.GetCell(j).NumericCellValue;
+                                                }
+                                                else
+                                                {
+                                                    dr[j] = row.GetCell(j).ToString().Replace("$", "");
+                                                }
                                             }
                                         }
                                     }
                                 }
+                                if (dt_flag) dt.Rows.Add(dr);
+                                column_flag = false;
                             }
-                            if (dt_flag) dt.Rows.Add(dr);
-                            column_flag = false;
+                        }
+                    }
+                    else if (config)
+                    {
+                        Console.WriteLine("開始將Config寫入記憶體");
+                        //開始讀表格,一列開始讀(row,x軸)再讀行(其實是讀每個cell)
+                        for (int i = st.FirstRowNum + 1; i <= 30; i++)
+                        {
+                            dr = dt.NewRow();
+                            row = st.GetRow(i);
+
+                            if (row != null)
+                            {
+                                for (int j = 29; j < row.LastCellNum; j++)
+                                {
+                                    if (row.GetCell(j) != null) //解決跨行cell是空值問題
+                                    {
+                                        value = row.GetCell(j).ToString().ToUpper();
+                                        //Console.Write("({0},{1})={2}, ",i,j,value);
+                                        //Console.Write(value + ",");
+                                        if (i == 2 && j >= 30)
+                                        {
+                                            if (value != "CONFIGS") configList.Add(value);
+                                        }
+                                    }
+                                }
+                                //Console.Write("\n");
+                            }
                         }
                     }
                 }
@@ -253,7 +253,7 @@ namespace BOM_Matrix_cmd
             return dt;
         }
 
-        public void DataTableToHashTable(DataTable dt)
+        public Hashtable DataTableToHashTable(DataTable dt)
         {
             int ItemList_row = 0;
             DataRow dr2 = null;
@@ -294,9 +294,10 @@ namespace BOM_Matrix_cmd
                 db.Add(config, dt2); //建立CONFIG和對應零件到HashTable
             }
             //DisplayHash(db);
+            return db;
         }
         
-        public void DataTableToExcel(bool mode)
+        public Hashtable DataTableToExcel(Hashtable db2, bool mode)
         {
             string[] item_out = null;
             string component = null;
@@ -308,11 +309,11 @@ namespace BOM_Matrix_cmd
 
             if (mode)
             {
-                item_out = new string[] { "VENDOR", "CONFIG" };
+                item_out = new string[] { "VENDOR", "CONFIG", "NOTES"};
                 component = "COMPONENT";
                 dt_items.Columns.Add(new DataColumn("vendor"));
                 dt_items.Columns.Add(new DataColumn("config"));
-                //dt_items.Columns.Add(new DataColumn("notes"));
+                dt_items.Columns.Add(new DataColumn("notes"));
             }
             if (!mode)
             {
@@ -324,7 +325,7 @@ namespace BOM_Matrix_cmd
                 dt_items.Columns.Add(new DataColumn("mc comment"));
             }
 
-            foreach (DictionaryEntry one in db) //hashtable read by config
+            foreach (DictionaryEntry one in db2) //hashtable read by config
             {
                 string config_Key = one.Key.ToString();
                 //Console.WriteLine("CONFIG = " + one.Key);
@@ -366,7 +367,7 @@ namespace BOM_Matrix_cmd
                         }
                         //DisplayHash(db_comp);
                         //Console.WriteLine(db_comp.Count);
-                        object db_comp_cp = db_comp.Clone(); //建立一個Hashtable來接,不然db_comp.clear()會把所有資料清掉
+                        object db_comp_cp = db_comp.Clone(); //建立一個Hashtable來接,不然db_comp.clear()會把所有資料清掉call by value
                         db_config.Add(config_Key, db_comp_cp);
                         //Console.WriteLine("********************");
                     }
@@ -374,42 +375,52 @@ namespace BOM_Matrix_cmd
                 }
                 //Console.WriteLine("--------------------");
             }
-            WriteExcel();
+            return db_config;
+            //WriteExcel();
             //Console.Read();
         }
 
-        public void WriteExcel()
+        public void WriteExcel(Hashtable db_config2, List<string> INI)
         {
             Boolean ck_comp = false, ck_comp2 = false ;
             String data = null;
-            int x = 0, y = 0; //(x,y)
             IWorkbook wk = null;
+            int x = 0, y = 0; //(x,y)
+            
             wk = new XSSFWorkbook();
             
             // 新增試算表
-            //wk.CreateSheet("試算表 A");
+            //wk.CreateSheet("試算表 A"); 
 
             //有資料內容的試算表
             XSSFSheet sheet1 = (XSSFSheet)wk.CreateSheet("Sheet1");
 
             //根據預先儲存的component去尋找每一個config
-            //foreach (string list in INI)
-            foreach (string list in complist) //原本是抓全部
+            foreach (string list in INI)
+            //foreach (string list in complist) //原本是抓全部
             {
                 //Console.WriteLine(list);
                 if (!ck_comp)
-                {
+                {                   
                     sheet1.CreateRow(x + 1); //第x+1行
                     sheet1.GetRow(x + 1).CreateCell(y + 1).SetCellValue("Config Name");
                     ck_comp = true;
                 }
                 sheet1.CreateRow(x + 2);
                 sheet1.GetRow(x + 2).CreateCell(y + 1).SetCellValue(list); //寫入EXCEL //第n+2行
+                sheet1.AutoSizeColumn(y + 1);
                 
                 //開始一個一個去讀config
-                foreach (DictionaryEntry config_key in db_config) //CONFIG
+                foreach (DictionaryEntry config_key in db_config2) //CONFIG
                 {
                     //Console.WriteLine("CONFIG = " + config_key.Key.ToString());
+                    //寫入config欄位
+                    if (!ck_comp2)
+                    {
+                        //Console.WriteLine(config_key.Key.ToString());
+                        sheet1.GetRow(x + 1).CreateCell(y + 2).SetCellValue(config_key.Key.ToString());
+                    }
+                            
                     foreach (DictionaryEntry value in (Hashtable)config_key.Value) //COMP
                     {
                         if(value.Key.ToString().ToUpper() == list.ToString().ToUpper())
@@ -422,18 +433,29 @@ namespace BOM_Matrix_cmd
                                 for (int j = 0; j < values.Columns.Count; j++)
                                 {
                                     //Console.Write(values.Rows[i][j].ToString() + ",");
-                                    data += values.Rows[i][j].ToString() + ";";
+                                    if (value.Key.ToString() == "MLB" && j == 1)
+                                    {
+                                        Console.WriteLine("{0}, {1}", config_key.Key.ToString() , values.Rows[i][j].ToString());
+                                        ReadINI(false);
+                                    }
+                                    data += values.Rows[i][j].ToString() + "\n";
                                 }
                             }
                             //Console.WriteLine("value=" + data);
                             //Console.WriteLine("value site = ({0},{1})", x+2, y+2);
-                            
-                            //寫入config欄位
-                            if (!ck_comp2)
-                            {
-                                sheet1.GetRow(x + 1).CreateCell(y + 2).SetCellValue(config_key.Key.ToString());
-                            }
+
                             sheet1.GetRow(x + 2).CreateCell(y + 2).SetCellValue(data);//寫入數值(component內容)
+                            if (data.ToString().Contains("\n"))
+                            {
+                                //將目前欄位的CellStyle設定為自動換行
+                                XSSFCellStyle cs = (XSSFCellStyle)wk.CreateCellStyle();
+                                cs.WrapText = true;
+                                sheet1.GetRow(x + 2).GetCell(y + 2).CellStyle = cs;
+
+                                //因為換行所以愈設幫他Row的高度變成兩倍
+                                sheet1.GetRow(x + 2).HeightInPoints = 3 * sheet1.DefaultRowHeight / 18;
+                                sheet1.AutoSizeColumn(y + 2);
+                            }
                             y += 1;
                             break;
                         }
@@ -446,7 +468,7 @@ namespace BOM_Matrix_cmd
 
             try
             {
-                FileStream file = new FileStream(@"output.xlsx", FileMode.Create);
+                FileStream file = new FileStream(@"KeyPart_output.xlsx", FileMode.Create);
                 wk.Write(file);
                 file.Close();
             }
@@ -456,50 +478,7 @@ namespace BOM_Matrix_cmd
             }
         }
         
-        public static int DisplayDT(DataTable dt)
-        {
-            Console.WriteLine("DisPlay DataTable");
-            //for (int i = 0; i < dt.Columns.Count; i++)
-            //{
-            //    Console.Write(dt.Columns[i].ColumnName + ", ");
-            //}
-            //Console.Write("\n\n");
-
-            for (int i = 0; i < dt.Rows.Count; i++)
-            {
-                for (int j = 0; j < dt.Columns.Count; j++)
-                {
-                    //Console.WriteLine("({0},{1}) = {2}",i,j,dt.Rows[i][j].ToString());
-                    Console.Write("({0},{1}) = {2}", i, j, dt.Rows[i][j].ToString()+", ");
-                }
-                Console.WriteLine("\n------------");
-            }
-            Console.WriteLine("\n************");
-            //Console.WriteLine("\n"+dt.Rows.Count);
-            //Console.WriteLine(dt.Columns.Count);
-            //Console.Read();
-            return 0;
-        }
-
-        public static int DisplayHash(Hashtable ht)
-        {
-            foreach (DictionaryEntry one in ht)
-            {
-                Console.WriteLine("key = " + one.Key);
-                DataTable value = (DataTable)one.Value;
-                for (int i = 0; i < value.Rows.Count; i++)
-                {
-                    for (int j = 0; j < value.Columns.Count; j++)
-                    {
-                        Console.Write(value.Rows[i][j].ToString() + ",");
-                    }
-                    Console.Write("\n");
-                }
-            }
-            return 0;
-        }
-
-        public void ReadINI(bool mode)
+        public List<string> ReadINI(bool mode)
         {
             List<string> INI = new List<string>();
             string[] lines = null;
@@ -529,40 +508,36 @@ namespace BOM_Matrix_cmd
             //// Keep the console window open in debug mode.
             //Console.WriteLine("Press any key to exit.");
             //System.Console.ReadKey();
+            return INI;
         }
     }
 
     class Program
     {
-        /*
         //main program
         static void Main(string[] args)
         {
-            DataTable dt = new DataTable();
+            bool mode = true; //1,false; 2,true (MLB or FATP)
 
             //read excel path
             string file = "C:\\PANDA.xlsx";
             _EXCEL excel = new _EXCEL(file);
 
-            excel.ReadINI();
-
             //read excel config data to Datatable and arrayList
-            excel.ExcelToConfig();
+            excel.ExcelToDataTable(1, mode, true);
 
             //read excel item data to Datatable
-            //dt = excel.ExcelToDataTable(1, false);
-            dt = excel.ExcelToDataTable(2, true);
-            excel.DataTableToHashTable(dt);
-            excel.DataTableToExcel(true);
+            Hashtable ht = excel.DataTableToExcel(excel.DataTableToHashTable(excel.ExcelToDataTable(2, mode, false)), mode);
+            excel.WriteExcel(ht, excel.ReadINI(mode));
 
             Console.WriteLine("Press any key to exit.");
             System.Console.ReadKey();
 
             //excel.DisplayDataTable(excel.ExcelToDataTable());
-            //excel.DisplayDataTable(excel.GetDataTableFromExcelFile());
+            //excel.DisplayDataTable(excel.GetDataTableFromExcelFile()); 
         }
-        */
-        
+
+        /*
         static bool blNoLogo = false;
         static bool blNoClearScreen = false;
         static bool blParameterOK = false;
@@ -629,22 +604,21 @@ namespace BOM_Matrix_cmd
 
         static void _main(string file)
         {
-            bool mode = true; //1,false; 2,true
-            DataTable dt = new DataTable();
+            bool mode = true; //1,false; 2,true (MLB or FATP)
+
             //read excel path
             ////string file = "C:\\PANDA5.xlsx";
             _EXCEL excel = new _EXCEL(file);
 
-            excel.ReadINI(mode);
-        
+            excel.ReadINI(true);
+
             //read excel config data to Datatable and arrayList
-            excel.ExcelToConfig();
+            excel.ExcelToDataTable(2, mode, true);
 
             //read excel item data to Datatable
-            //dt = excel.ExcelToDataTable(1, mode);
-            dt = excel.ExcelToDataTable(2, mode);
-            excel.DataTableToHashTable(dt);
+            excel.DataTableToHashTable(excel.ExcelToDataTable(2, mode, false));
             excel.DataTableToExcel(mode);
         }
+        */
     }
 }

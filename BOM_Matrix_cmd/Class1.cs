@@ -89,6 +89,64 @@ namespace BOM_Matrix_cmd
             }
             return dt;
         }
+
+        /*
+        //將config 29~31的內容存入DataTable
+        public DataTable ExcelToConfig()
+        {
+            DataTable dt = new DataTable();
+            IWorkbook wk = null;
+            using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite))
+            {
+                if (Datasource.Contains(".xlsx")) //2007
+                {
+                    wk = new XSSFWorkbook(fs);
+                }
+                else //2003
+                {
+                    wk = new HSSFWorkbook(fs);
+                }
+
+                //因為只有一個Sheet
+                for (int k = 0; k < wk.NumberOfSheets; k++)
+                {
+                    ISheet st = wk.GetSheetAt(k);
+                    IRow row = null;
+                    String value = null;
+                    DataRow dr = null;
+
+                    Console.WriteLine("開始將Config寫入記憶體");
+                    //開始讀表格,一列開始讀(row,x軸)再讀行(其實是讀每個cell)
+                    for (int i = st.FirstRowNum + 1; i <= 30; i++)
+                    {
+                        dr = dt.NewRow();
+                        row = st.GetRow(i);
+
+                        if (row != null)
+                        {
+                            for (int j = 29; j < row.LastCellNum; j++)
+                            {
+                                if (row.GetCell(j) != null) //解決跨行cell是空值問題
+                                {
+                                    value = row.GetCell(j).ToString().ToUpper();
+                                    //Console.Write("({0},{1})={2}, ",i,j,value);
+                                    //Console.Write(value + ",");
+                                    if (i == 2 && j >= 30)
+                                    {
+                                        if (value != "CONFIGS") configList.Add(value);
+                                    }
+                                }
+                            }
+                            //Console.Write("\n");
+                        }
+                    }
+                }
+                wk = null; //全部Sheet讀完關閉Excel
+                fs.Close();
+            }
+            return dt;
+        }
+        */
     }
 }
 
