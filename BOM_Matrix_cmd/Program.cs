@@ -32,17 +32,200 @@ namespace BOM_Matrix_cmd
         private string fileName = null; // Data name
         private string Datasource = null;
 
-        public List<string> configList = new List<string>(); //存config
-        public List<string> complist = new List<string>(); //存component
+        private List<string> configList = new List<string>(); //存config
+        private List<string> complist = new List<string>(); //存component
         
-        public Hashtable db = new Hashtable(); //根據config存component
-        public Hashtable db_comp = new Hashtable(); //存component+整理過的datatable
-        public Hashtable db_config = new Hashtable(); //存confgi+db_comp
+        private Dictionary<string, string> db_mlb = new Dictionary<string, string>(); //存Config+MLB用來搜尋Config對應的MLB資料
+        private Dictionary<string, object> db = new Dictionary<string, object>();//根據config存component
+        private Dictionary<string, object> db_config = new Dictionary<string, object>();//存confgi+db_comp
 
+        //private Hashtable db = new Hashtable(); //根據config存component //被Dictionary<string, object> db取代,目地是為了順序(FIFO)
+        //private Hashtable db_config = new Hashtable(); //存confgi+db_comp //Dictionary<string, object> db_config取代,目地是為了順序(FIFO)
+        private Hashtable db_comp = new Hashtable(); //存component+整理過的datatable
+        private Hashtable fatp_config = new Hashtable();//FATP的config table
+
+        public string fileNames { get; set; }
+        public int column_s { get; set; }
+        public int column_e { get; set; }
+        public int row_s { get; set; }
+        public int row_e { get; set; }
+
+        public DataTable Excel_To_Datatable(int mode)
+        {
+            IWorkbook wk = null;
+            DataTable dt = new DataTable();
+            DataRow dr = null;
+            string Datasource = this.fileNames;
+            string Item_value = null, Comp_value = null;
+            try
+            {
+                Console.WriteLine(fileName + "\nLoading Config Data into memory\n");
+
+                using (FileStream fs = new FileStream(this.fileNames, FileMode.Open, FileAccess.ReadWrite))
+                {
+                    if (Datasource.Contains(".xlsx")) //2007
+                    {
+                        wk = new XSSFWorkbook(fs);
+                    }
+                    else //2003
+                    {
+                        wk = new HSSFWorkbook(fs);
+                    }
+
+                    for (int k = 0; k < wk.NumberOfSheets; k++)
+                    {
+                        ISheet st = wk.GetSheetAt(k);
+                        IRow row = null;
+                        CellType ct = CellType.Blank;
+
+                        if (this.column_e == 0) this.column_e = st.LastRowNum;
+                        for (int i = this.column_s; i <= this.column_e; i++) //column列
+                        {
+                            row = st.GetRow(i);
+                            dr = dt.NewRow();
+
+                            if (row != null)
+                            {
+                                int count = 0; //計算存入dt的位置
+                                bool dr_add = false, merge = false;
+
+                                if (this.row_e == 0) this.row_e = row.LastCellNum;
+                                for (int j = this.row_s; j < this.row_e; j++) //row行
+                                {
+                                    if (row.GetCell(j) != null)
+                                    {
+                                        string value = row.GetCell(j).ToString().ToUpper();
+                                        //Console.Write("({0},{1})={2} ", i, j, value);
+
+                                        switch (mode)
+                                        {
+                                            case 0:
+                                                if (i == this.column_s)
+                                                {
+                                                    dt.Columns.Add(row.GetCell(j).StringCellValue.Trim());
+                                                    dr[count] = row.GetCell(j).ToString().ToUpper();
+                                                }
+                                                else if (i == 2 || i == 3 || i == 4 || i == 8 || i == 13 || i == 16 || i == 20)
+                                                {
+                                                    dr_add = true;
+                                                    ct = row.GetCell(j).CellType;
+                                                    ////如果此欄位格式為公式 則去取得CachedFormulaResultType
+                                                    if (ct == CellType.Formula)
+                                                    {
+                                                        ct = row.GetCell(j).CachedFormulaResultType;
+                                                    }
+                                                    if (ct == CellType.Numeric)
+                                                    {
+                                                        dr[count] = row.GetCell(j).NumericCellValue;
+                                                    }
+                                                    else
+                                                    {
+                                                        dr[count] = row.GetCell(j).ToString().Replace("$", "");
+                                                        //dr[j] = row.GetCell(j).ToString();
+                                                    }
+                                                }
+                                                count++;
+                                                break;
+
+                                            case 1:
+                                                if (i == this.column_s)
+                                                {
+                                                    //Console.WriteLine("Column座標 ({0},{1}) = {2}", i, j, value);
+                                                    if (dt.Columns.Contains(row.GetCell(j).StringCellValue.Trim()))
+                                                    {
+                                                        string temp = row.GetCell(j).StringCellValue.Trim() + "_" + count;
+                                                        dt.Columns.Add(temp);
+                                                        count++;
+                                                    }
+                                                    else
+                                                    {
+                                                        dt.Columns.Add(row.GetCell(j).StringCellValue.Trim());
+                                                    }
+                                                    dr[count] = row.GetCell(j);
+                                                }
+                                                if (row.GetCell(0).IsMergedCell && !merge)
+                                                {
+                                                    Item_value = row.GetCell(0).ToString().ToUpper();
+                                                    merge = true;
+                                                }
+                                                if (row.GetCell(2).CellType.ToString() != "Blank")
+                                                {
+                                                    Comp_value = row.GetCell(2).ToString().ToUpper();
+                                                }
+
+                                                if (j == 0)
+                                                {
+                                                    dr[count] = Item_value;
+                                                }
+                                                else if (j == 2)
+                                                {
+                                                    dr[count] = Comp_value;
+                                                }
+                                                else
+                                                {
+                                                    ct = row.GetCell(j).CellType;
+                                                    //如果此欄位格式為公式 則去取得CachedFormulaResultType
+                                                    if (ct == CellType.Formula)
+                                                    {
+                                                        ct = row.GetCell(j).CachedFormulaResultType;
+                                                    }
+                                                    if (ct == CellType.Numeric)
+                                                    {
+                                                        dr[count] = row.GetCell(j).NumericCellValue;
+                                                    }
+                                                    else
+                                                    {
+                                                        dr[count] = row.GetCell(j).ToString().Replace("$", "");
+                                                    }
+                                                }
+                                                dr_add = true;
+                                                count++;
+                                                break;
+
+                                            case 2:
+
+                                                break;
+                                            default:
+                                                break;
+                                        }
+                                    }
+                                }
+                                if (dr_add) dt.Rows.Add(dr);
+                            }
+                            //Console.Write("\n");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("讀取檔案時出錯！" + Environment.NewLine + ex.Message);
+            }
+            finally
+            {
+                //DisplayDT_column(dt);
+                //Console.Read();
+                Console.WriteLine("Loading Config Data finish.");
+            }
+            return dt;
+        }
+        
         public _EXCEL(string fileName)
         {
             this.fileName = fileName;
             this.Datasource = fileName;
+        }
+
+        public static int DisplayDT_column(DataTable dt)
+        {
+            Console.WriteLine("*******Display DataTable Column*******");
+            for (int i = 1; i < dt.Columns.Count; i++)
+            {
+
+                Console.Write("{0}={1} ", i, dt.Columns[i].ColumnName);
+            }
+            Console.Write("\n");
+            return 0;
         }
 
         public static int DisplayDT(DataTable dt)
@@ -74,15 +257,15 @@ namespace BOM_Matrix_cmd
         {
             foreach (DictionaryEntry one in ht)
             {
-                Console.WriteLine("key = " + one.Key);
+                Console.WriteLine("key = " + one.Key + " ");
                 DataTable value = (DataTable)one.Value;
                 for (int i = 0; i < value.Rows.Count; i++)
                 {
                     for (int j = 0; j < value.Columns.Count; j++)
                     {
-                        Console.Write(value.Rows[i][j].ToString() + ",");
+                        //Console.Write(value.Rows[i][j].ToString() + ",");
                     }
-                    Console.Write("\n");
+                    //Console.Write("\n");
                 }
             }
             return 0;
@@ -120,7 +303,7 @@ namespace BOM_Matrix_cmd
 
                     if (!config)
                     {
-                        Console.WriteLine("開始將Item寫入記憶體\n");
+                        Console.WriteLine(fileName+"\nLoading Item into memory\n");
                         //開始讀表格,一列開始讀(row,x軸)再讀行(其實是讀每個cell)
                         for (int i = st.FirstRowNum; i <= st.LastRowNum; i++)
                         {
@@ -219,7 +402,8 @@ namespace BOM_Matrix_cmd
                     }
                     else if (config)
                     {
-                        Console.WriteLine("開始將Config寫入記憶體");
+                        Console.WriteLine(fileName + "\nLoading Config into memory");
+
                         //開始讀表格,一列開始讀(row,x軸)再讀行(其實是讀每個cell)
                         for (int i = st.FirstRowNum + 1; i <= 30; i++)
                         {
@@ -244,16 +428,22 @@ namespace BOM_Matrix_cmd
                                 //Console.Write("\n");
                             }
                         }
+                        //Console.Read();
                     }
                 }
                 wk = null; //全部Sheet讀完關閉Excel
                 fs.Close();
             }
             //DisplayDT(dt);
+            //foreach (string one in configList)
+            //{
+            //    Console.Write(one + ", ");
+            //}
+            //Console.Read();
             return dt;
         }
 
-        public Hashtable DataTableToHashTable(DataTable dt)
+        public Dictionary<string,object> DataTableToHashTable(DataTable dt)
         {
             int ItemList_row = 0;
             DataRow dr2 = null;
@@ -273,6 +463,7 @@ namespace BOM_Matrix_cmd
                     {
                         //Console.WriteLine("{0} site= {1}", dt.Columns[i].ColumnName, i);
                         ItemList_row = i;
+                        //Console.Read();
                     }
                 }
 
@@ -294,10 +485,16 @@ namespace BOM_Matrix_cmd
                 db.Add(config, dt2); //建立CONFIG和對應零件到HashTable
             }
             //DisplayHash(db);
+            //Console.WriteLine("pass");
+            //foreach (KeyValuePair<string, object> value in db)
+            //{
+            //    Console.Write(value.Key + " ");
+            //}
+            //Console.Read();
             return db;
         }
-        
-        public Hashtable DataTableToExcel(Hashtable db2, bool mode)
+
+        public Dictionary<string,object> DataTableToExcel(Dictionary<string, object> db2, bool mode)
         {
             string[] item_out = null;
             string component = null;
@@ -325,7 +522,8 @@ namespace BOM_Matrix_cmd
                 dt_items.Columns.Add(new DataColumn("mc comment"));
             }
 
-            foreach (DictionaryEntry one in db2) //hashtable read by config
+            //foreach (DictionaryEntry one in db2) 
+            foreach (KeyValuePair<string, object> one in db2) //hashtable read by config
             {
                 string config_Key = one.Key.ToString();
                 //Console.WriteLine("CONFIG = " + one.Key);
@@ -380,12 +578,14 @@ namespace BOM_Matrix_cmd
             //Console.Read();
         }
 
-        public void WriteExcel(Hashtable db_config2, List<string> INI)
+        public void WriteExcel(Dictionary<string, object> fatp_db_config, Dictionary<string, object> mlb_db_config,
+                                List<string> FATP_INI, List<string> MLB_INI, DataTable dt)
         {
-            Boolean ck_comp = false, ck_comp2 = false ;
-            String data = null;
+            string[] config_data = new string[] { "CATEGORY", "BUILD DATE", "INPUT QTY", "UNIT COLOR", "WIFI/MODE", "TARGET OUTPUT" };
+            Boolean ck_comp = false, ck_comp2 = false;
+            String data = null, MLB_value = null;
             IWorkbook wk = null;
-            int x = 0, y = 0; //(x,y)
+            int x = 0, y = 0; //(x,y) x上下,y左右
             
             wk = new XSSFWorkbook();
             
@@ -393,13 +593,12 @@ namespace BOM_Matrix_cmd
             //wk.CreateSheet("試算表 A"); 
 
             //有資料內容的試算表
-            XSSFSheet sheet1 = (XSSFSheet)wk.CreateSheet("Sheet1");
+            XSSFSheet sheet1 = (XSSFSheet)wk.CreateSheet("RF Key Parts");
 
             //根據預先儲存的component去尋找每一個config
-            foreach (string list in INI)
-            //foreach (string list in complist) //原本是抓全部
+            foreach (string list in FATP_INI)
             {
-                //Console.WriteLine(list);
+                //Console.WriteLine("FATP={0}",list);
                 if (!ck_comp)
                 {                   
                     sheet1.CreateRow(x + 1); //第x+1行
@@ -410,40 +609,62 @@ namespace BOM_Matrix_cmd
                 sheet1.GetRow(x + 2).CreateCell(y + 1).SetCellValue(list); //寫入EXCEL //第n+2行
                 sheet1.AutoSizeColumn(y + 1);
                 
+                int count = 0;
                 //開始一個一個去讀config
-                foreach (DictionaryEntry config_key in db_config2) //CONFIG
+                foreach (KeyValuePair<string, object> config_key in fatp_db_config) //CONFIG
                 {
-                    //Console.WriteLine("CONFIG = " + config_key.Key.ToString());
+                    //Console.WriteLine(config_key.Key.ToString());
+                    //Console.WriteLine("({0},{1}); ",x,y);
+
                     //寫入config欄位
                     if (!ck_comp2)
                     {
-                        //Console.WriteLine(config_key.Key.ToString());
                         sheet1.GetRow(x + 1).CreateCell(y + 2).SetCellValue(config_key.Key.ToString());
                     }
-                            
-                    foreach (DictionaryEntry value in (Hashtable)config_key.Value) //COMP
+                    
+                    //(x=title, y=config)
+
+                    for (int k = 1; k < dt.Columns.Count; k++)
+                    {
+                        if (dt.Columns[k].ColumnName.ToString().ToUpper() == config_key.Key.ToString().ToUpper())
+                        {
+                            //Console.Write("{0}={1}:", k, dt.Columns[k].ColumnName);
+                            for (int i = 0; i < dt.Rows.Count; i++)
+                            {
+                                if (dt.Rows[i][0].ToString().ToUpper() == list.ToString().ToUpper())
+                                {
+                                    //Console.WriteLine(dt.Rows[i][k].ToString());
+                                    sheet1.GetRow(x + 2).CreateCell(y + 2).SetCellValue(dt.Rows[i][k].ToString());//寫入數值(component內容)
+                                }
+                            }
+                        }
+                    }
+                    //Console.Write("\n");
+
+
+                    foreach (DictionaryEntry value in (Hashtable)config_key.Value) //COMPONENT元件(找N次,根據有多少component key)
                     {
                         if(value.Key.ToString().ToUpper() == list.ToString().ToUpper())
                         {
-                            //Console.WriteLine("COMP = " + value.Key.ToString());
+                            //Console.WriteLine("Find "+value.Key.ToString());
                             DataTable values = (DataTable)value.Value;
                             data = null;
                             for (int i = 0; i < values.Rows.Count; i++)
                             {
                                 for (int j = 0; j < values.Columns.Count; j++)
                                 {
-                                    //Console.Write(values.Rows[i][j].ToString() + ",");
+                                    data += values.Rows[i][j].ToString() + "\n";
+                                    
                                     if (value.Key.ToString() == "MLB" && j == 1)
                                     {
-                                        Console.WriteLine("{0}, {1}", config_key.Key.ToString() , values.Rows[i][j].ToString());
-                                        ReadINI(false);
+                                        MLB_value = values.Rows[i][j].ToString(); //setting MLB search value
+                                        db_mlb.Add(config_key.Key.ToString(), MLB_value);
+                                        count++;
+                                        //Console.Write(config_key.Key.ToString() + " " + MLB_value + " ");
                                     }
-                                    data += values.Rows[i][j].ToString() + "\n";
                                 }
                             }
-                            //Console.WriteLine("value=" + data);
-                            //Console.WriteLine("value site = ({0},{1})", x+2, y+2);
-
+                            
                             sheet1.GetRow(x + 2).CreateCell(y + 2).SetCellValue(data);//寫入數值(component內容)
                             if (data.ToString().Contains("\n"))
                             {
@@ -456,15 +677,78 @@ namespace BOM_Matrix_cmd
                                 sheet1.GetRow(x + 2).HeightInPoints = 3 * sheet1.DefaultRowHeight / 18;
                                 sheet1.AutoSizeColumn(y + 2);
                             }
-                            y += 1;
-                            break;
+                            //y++;
+                            break; //跳離COMPONENT
+                        }
+                    }//component
+                    y++;
+
+                    //透過MLB去查詢MLB config Data
+                    if (count == fatp_db_config.Count)
+                    {
+                        foreach (string mlb_list in MLB_INI)
+                        {
+                            x++;
+                            y = 0;
+                            sheet1.CreateRow(x + 2);
+                            sheet1.GetRow(x + 2).CreateCell(1).SetCellValue(mlb_list); //寫入EXCEL //第n+2行
+                            sheet1.AutoSizeColumn(1);
+                            foreach (KeyValuePair<string, string> mlb_value in db_mlb) 
+                            {
+                                foreach (KeyValuePair<string, object> mlb_config in mlb_db_config)//config and MLB value
+                                {
+                                    if (mlb_value.Value.ToString().ToUpper() == mlb_config.Key.ToString().ToUpper())
+                                    {
+                                        //Console.WriteLine(mlb_config.Key.ToString());
+                                        foreach (DictionaryEntry value in (Hashtable)mlb_config.Value)
+                                        {
+                                            if (value.Key.ToString().ToUpper() == mlb_list.ToString().ToUpper())
+                                            {
+                                                DataTable values = (DataTable)value.Value;
+                                                data = null;
+                                                for (int i = 0; i < values.Rows.Count; i++)
+                                                {
+                                                    for (int j = 0; j < values.Columns.Count; j++)
+                                                    {
+                                                        data += values.Rows[i][j].ToString() + "\n";
+                                                    }
+                                                }
+                                                sheet1.GetRow(x + 2).CreateCell(y + 2).SetCellValue(data);//寫入數值(component內容)
+                                                if (data.ToString().Contains("\n"))
+                                                {
+                                                    //將目前欄位的CellStyle設定為自動換行
+                                                    XSSFCellStyle cs = (XSSFCellStyle)wk.CreateCellStyle();
+                                                    cs.WrapText = true;
+                                                    sheet1.GetRow(x + 2).GetCell(y + 2).CellStyle = cs;
+
+                                                    //因為換行所以愈設幫他Row的高度變成兩倍
+                                                    sheet1.GetRow(x + 2).HeightInPoints = 3 * sheet1.DefaultRowHeight / 13;
+                                                    sheet1.AutoSizeColumn(y + 2);
+                                                }
+                                                y++;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            //Console.WriteLine("\n***************");
                         }
                     }
-                }
+                } //config
                 ck_comp2 = true;
                 y = 0;
-                x += 1;
-            }
+                x++;
+            }//INI
+
+            MLB_log();
+
+            //Console.WriteLine("\n");
+            //foreach (KeyValuePair<string, string> value in db_mlb)
+            //{
+            //    Console.Write(value.Key + " " + value.Value + " ");
+            //}
+            //Console.WriteLine("\n");
 
             try
             {
@@ -499,45 +783,78 @@ namespace BOM_Matrix_cmd
                 string[] str = line.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (string str2 in str)
                 {
-                    Console.Write(str2+", ");
+                    //Console.Write(str2+", ");
                     INI.Add(str2);
                 }
                 //_fatp.Add(new data_list() { FATP = line});
             }
-            Console.Write("\n");
+            //Console.Write("\n");
             //// Keep the console window open in debug mode.
             //Console.WriteLine("Press any key to exit.");
             //System.Console.ReadKey();
             return INI;
         }
+
+        public void MLB_log()
+        {
+            FileInfo f = new FileInfo("mlb_order.log");
+            StreamWriter sw = f.CreateText();
+            foreach (KeyValuePair<string, string> one in db_mlb)
+            {
+                sw.Write(one.Key.ToString() + "=" + one.Value.ToString() + ", ");
+            }
+            sw.Flush();
+            sw.Close();
+        }
     }
 
     class Program
     {
+        enum DTMode : int
+        {
+            fatp_item = 0,
+            fatp_data = 1,
+            mlb_data = 2,
+            _default = 3
+        };
+
+        /*
         //main program
         static void Main(string[] args)
         {
-            bool mode = true; //1,false; 2,true (MLB or FATP)
 
+            bool mode = true; //1,false; 2,true (MLB or FATP)
             //read excel path
-            string file = "C:\\PANDA.xlsx";
+            string file = "C:\\FATP_T.xlsx";
             _EXCEL excel = new _EXCEL(file);
 
+            ////設定參數(FATP_ITEM)
+            excel.fileNames = file;
+            excel.column_s = 2;
+            excel.column_e = 20;
+            excel.row_s = 29;
+            DataTable dt_config = excel.Excel_To_Datatable((int)DTMode.fatp_item);
+
             //read excel config data to Datatable and arrayList
-            excel.ExcelToDataTable(1, mode, true);
-
+            excel.ExcelToDataTable(2, mode, true);
             //read excel item data to Datatable
-            Hashtable ht = excel.DataTableToExcel(excel.DataTableToHashTable(excel.ExcelToDataTable(2, mode, false)), mode);
-            excel.WriteExcel(ht, excel.ReadINI(mode));
+            Dictionary<string, object> FATP_ht = excel.DataTableToExcel(excel.DataTableToHashTable(excel.ExcelToDataTable(2, mode, false)), mode);
 
+            mode = false;
+            file = "C:\\MLB_T.xlsx";
+            _EXCEL MLB_excel = new _EXCEL(file);
+            MLB_excel.ExcelToDataTable(1, mode, true);
+            Dictionary<string, object> MLB_ht = MLB_excel.DataTableToExcel(MLB_excel.DataTableToHashTable(MLB_excel.ExcelToDataTable(1, mode, false)), mode);
+            
+            //輸出
+            excel.WriteExcel(FATP_ht, MLB_ht, excel.ReadINI(true), excel.ReadINI(false), dt_config);
+
+            //exit program
             Console.WriteLine("Press any key to exit.");
             System.Console.ReadKey();
-
-            //excel.DisplayDataTable(excel.ExcelToDataTable());
-            //excel.DisplayDataTable(excel.GetDataTableFromExcelFile()); 
         }
-
-        /*
+        */
+        
         static bool blNoLogo = false;
         static bool blNoClearScreen = false;
         static bool blParameterOK = false;
@@ -581,7 +898,8 @@ namespace BOM_Matrix_cmd
                     }
                     else if (string.Compare(args[i], "/C", true) == 0)
                     {
-                        _main(args[i + 1].ToString());
+                        _main(args[i + 1].ToString(), args[i + 2].ToString());
+                        nErrorLevel = 0;
                         blParameterOK = true;
                     }
                 }
@@ -602,23 +920,33 @@ namespace BOM_Matrix_cmd
             }
         }
 
-        static void _main(string file)
+        static void _main(string file, string file2)
         {
             bool mode = true; //1,false; 2,true (MLB or FATP)
-
             //read excel path
-            ////string file = "C:\\PANDA5.xlsx";
+            //string file = "C:\\PANDA.xlsx";
             _EXCEL excel = new _EXCEL(file);
 
-            excel.ReadINI(true);
+            ////設定參數(FATP_ITEM)
+            excel.fileNames = file;
+            excel.column_s = 2;
+            excel.column_e = 20;
+            excel.row_s = 29;
+            DataTable dt_config = excel.Excel_To_Datatable((int)DTMode.fatp_item);
 
             //read excel config data to Datatable and arrayList
             excel.ExcelToDataTable(2, mode, true);
-
             //read excel item data to Datatable
-            excel.DataTableToHashTable(excel.ExcelToDataTable(2, mode, false));
-            excel.DataTableToExcel(mode);
+            Dictionary<string, object> FATP_ht = excel.DataTableToExcel(excel.DataTableToHashTable(excel.ExcelToDataTable(2, mode, false)), mode);
+
+            mode = false;
+            //file = "C:\\MLB_T.xlsx";
+            _EXCEL MLB_excel = new _EXCEL(file2);
+            MLB_excel.ExcelToDataTable(1, mode, true);
+            Dictionary<string, object> MLB_ht = MLB_excel.DataTableToExcel(MLB_excel.DataTableToHashTable(MLB_excel.ExcelToDataTable(1, mode, false)), mode);
+
+            //輸出
+            excel.WriteExcel(FATP_ht, MLB_ht, excel.ReadINI(true), excel.ReadINI(false), dt_config);
         }
-        */
     }
 }

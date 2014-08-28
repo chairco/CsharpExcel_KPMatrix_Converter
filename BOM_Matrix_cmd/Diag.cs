@@ -12,12 +12,12 @@ namespace BOM_Matrix_cmd
     class Diags
     {
         static string sProgramDescription = "Windows C# BOM_Matrix Utility";
-        static string sBuildDate = "2014-08-20";
+        static string sBuildDate = "2014-08-28";
 //        static string sRevision = "1.00a";
 
         static public void Logo(Boolean blNoLogo = false, Boolean blClearScreen = true)
         {
-            string sRevision = "1.00a";
+            string sRevision = "1.00d";
 #if DKey            
             sRevision += "P";
 #endif
@@ -61,7 +61,8 @@ namespace BOM_Matrix_cmd
             //Command.PrintStr(0, nY++, "-erv <ErrorLevel>: Return Error Code", Command.nSCREEN_LEFT(), 0x07);
             Command.PrintStr(0, nY++, "BOM_Matrix function--------------------", Command.nSCREEN_LEFT(), 0x02);
             // Add other function descriptions here
-            Command.PrintStr(0, nY++, "/C [f1] [f2]: Transfer BOM By Config.", Command.nSCREEN_LEFT(), 0x07);
+            Command.PrintStr(0, nY++, "/C [FATP File] [MLB File]: Transfer", Command.nSCREEN_LEFT(), 0x07);
+            Command.PrintStr(0, nY++, "BOM By Config.", Command.nSCREEN_LEFT(), 0x07);
             //Command.PrintStr(0, nY++, "/DELTA: Set the UAC to \"Never notify\".", Command.nSCREEN_LEFT(), 0x07);
             //Command.PrintStr(0, nY++, "/ChkClose: Check whether UAC is colsed.", Command.nSCREEN_LEFT(), 0x07);
             //Command.PrintStr(0, nY++, "/Default: Set the UAC to \"Default\".", Command.nSCREEN_LEFT(), 0x07);
