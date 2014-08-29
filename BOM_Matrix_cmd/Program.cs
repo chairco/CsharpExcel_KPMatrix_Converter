@@ -218,7 +218,7 @@ namespace BOM_Matrix_cmd
 
         public static int DisplayDT_column(DataTable dt)
         {
-            Console.WriteLine("*******Display DataTable Column*******");
+            Console.WriteLine("++++++++++++++Display DataTable Column++++++++++++++s");
             for (int i = 1; i < dt.Columns.Count; i++)
             {
 
@@ -531,29 +531,34 @@ namespace BOM_Matrix_cmd
 
                 for (int k = 0; k < value.Columns.Count; k++) //search columns(欄位標題)
                 {
-                    if (value.Columns[k].ColumnName.ToUpper() == component.ToUpper()) //為component
+                    if (value.Columns[k].ColumnName.ToUpper() == component.ToUpper()) //檢查是MLB or FATP?
                     {
                         item_site = k;
                         for (int i = 0; i < value.Rows.Count; i++) //讀這一列
                         {
                             int m = 0;
                             string comp_hash_key = value.Rows[i][k].ToString();
-                            
                             //Console.WriteLine(value.Rows[i][k].ToString() + ","); //從這裡開始，建立一個dt根據每個compnonet去存
                             DataTable dt_item;
                             dt_item = dt_items.Clone();
 
-                            //建立一個新行-->對應dt_item.Rows.Add(dr)
-                            dr = dt_item.NewRow();
+                            dr = dt_item.NewRow(); //建立一個新行-->對應dt_item.Rows.Add(dr)
                             foreach (string items in item_out) //搜尋要找的欄位標題
                             {   
                                 for (int n = 0; n < value.Columns.Count; n++)
                                 {
                                     if (value.Columns[n].ColumnName.ToUpper() == items.ToUpper())
                                     {       
-                                        //int _item_site = n;
-                                        //Console.WriteLine("m="+m+","+value.Rows[i][n].ToString());
-                                        dr[m] = value.Rows[i][n];
+                                        //Console.Write("{0}={1}; ",m,value.Rows[i][n].ToString());
+                                        //用來判斷dt的row內是否為空值,空值就塞空值
+                                        if (value.Rows[i][n].Equals(""))
+                                        {
+                                            dr[m] = "";
+                                        }
+                                        else
+                                        {
+                                            dr[m] = value.Rows[i][n];
+                                        }
                                         m += 1;
                                     }
                                 }
@@ -567,15 +572,14 @@ namespace BOM_Matrix_cmd
                         //Console.WriteLine(db_comp.Count);
                         object db_comp_cp = db_comp.Clone(); //建立一個Hashtable來接,不然db_comp.clear()會把所有資料清掉call by value
                         db_config.Add(config_Key, db_comp_cp);
-                        //Console.WriteLine("********************");
+                        //Console.WriteLine("\n********************");
                     }
                     db_comp.Clear();
                 }
                 //Console.WriteLine("--------------------");
             }
-            return db_config;
-            //WriteExcel();
             //Console.Read();
+            return db_config;
         }
 
         public void WriteExcel(Dictionary<string, object> fatp_db_config, Dictionary<string, object> mlb_db_config,
@@ -622,8 +626,7 @@ namespace BOM_Matrix_cmd
                         sheet1.GetRow(x + 1).CreateCell(y + 2).SetCellValue(config_key.Key.ToString());
                     }
                     
-                    //(x=title, y=config)
-
+                    //config data代表(x=title, y=config)
                     for (int k = 1; k < dt.Columns.Count; k++)
                     {
                         if (dt.Columns[k].ColumnName.ToString().ToUpper() == config_key.Key.ToString().ToUpper())
@@ -641,8 +644,8 @@ namespace BOM_Matrix_cmd
                     }
                     //Console.Write("\n");
 
-
-                    foreach (DictionaryEntry value in (Hashtable)config_key.Value) //COMPONENT元件(找N次,根據有多少component key)
+                    //COMPONENT元件(找N次,根據有多少component key)
+                    foreach (DictionaryEntry value in (Hashtable)config_key.Value)
                     {
                         if(value.Key.ToString().ToUpper() == list.ToString().ToUpper())
                         {
@@ -653,7 +656,13 @@ namespace BOM_Matrix_cmd
                             {
                                 for (int j = 0; j < values.Columns.Count; j++)
                                 {
-                                    data += values.Rows[i][j].ToString() + "\n";
+                                    //取得每個comp內dt所有資料
+                                    //Console.Write("({0},{1})={2}"+",", i, j, values.Rows[i][j].ToString());
+                                    //Console.Write("({0},{1})={2}" + ",", i, j, values.Rows[i][j].Equals(""));
+                                    if (!values.Rows[i][j].Equals(""))
+                                    {
+                                        data += values.Rows[i][j].ToString() + "\n";
+                                    }
                                     
                                     if (value.Key.ToString() == "MLB" && j == 1)
                                     {
@@ -677,8 +686,7 @@ namespace BOM_Matrix_cmd
                                 sheet1.GetRow(x + 2).HeightInPoints = 3 * sheet1.DefaultRowHeight / 18;
                                 sheet1.AutoSizeColumn(y + 2);
                             }
-                            //y++;
-                            break; //跳離COMPONENT
+                            break; //跳離compoment
                         }
                     }//component
                     y++;
@@ -710,7 +718,10 @@ namespace BOM_Matrix_cmd
                                                 {
                                                     for (int j = 0; j < values.Columns.Count; j++)
                                                     {
-                                                        data += values.Rows[i][j].ToString() + "\n";
+                                                        if (!values.Rows[i][j].Equals(""))
+                                                        {
+                                                            data += values.Rows[i][j].ToString() + "\n";
+                                                        }
                                                     }
                                                 }
                                                 sheet1.GetRow(x + 2).CreateCell(y + 2).SetCellValue(data);//寫入數值(component內容)
@@ -739,7 +750,7 @@ namespace BOM_Matrix_cmd
                 ck_comp2 = true;
                 y = 0;
                 x++;
-            }//INI
+            }//ini
 
             MLB_log();
 
@@ -752,7 +763,8 @@ namespace BOM_Matrix_cmd
 
             try
             {
-                FileStream file = new FileStream(@"KeyPart_output.xlsx", FileMode.Create);
+                DateTime now = DateTime.Now;
+                FileStream file = new FileStream(@"RF_KeyPart_List_" + now.ToString("yyyy_M_d_HH_mm") + ".xlsx", FileMode.Create);
                 wk.Write(file);
                 file.Close();
             }
