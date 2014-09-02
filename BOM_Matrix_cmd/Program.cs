@@ -42,7 +42,7 @@ namespace BOM_Matrix_cmd
         //private Hashtable db = new Hashtable(); //根據config存component //被Dictionary<string, object> db取代,目地是為了順序(FIFO)
         //private Hashtable db_config = new Hashtable(); //存confgi+db_comp //Dictionary<string, object> db_config取代,目地是為了順序(FIFO)
         private Hashtable db_comp = new Hashtable(); //存component+整理過的datatable
-        private Hashtable fatp_config = new Hashtable();//FATP的config table
+        //private Hashtable fatp_config = new Hashtable();//FATP的config table
 
         public string fileNames { get; set; }
         public int column_s { get; set; }
@@ -216,6 +216,28 @@ namespace BOM_Matrix_cmd
             this.Datasource = fileName;
         }
 
+        public static int DisplayDTAll(DataTable dt)
+        {
+            Console.WriteLine("*******Display DataTable Column*******");
+            for (int i = 0; i < dt.Columns.Count; i++)
+            {
+                Console.Write("{0}={1} ", i, dt.Columns[i].ColumnName);
+            }
+            Console.Write("\n");
+
+            Console.WriteLine("*******Display DataTable Row*******");
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                for (int j = 0; j < dt.Columns.Count; j++)
+                {
+                    //Console.WriteLine("({0},{1}) = {2}",i,j,dt.Rows[i][j].ToString());
+                    Console.Write("({0},{1})={2} ", i, j, dt.Rows[i][j].ToString().ToUpper());
+                }
+                Console.Write("\n");
+            }
+            return 0;
+        }
+        
         public static int DisplayDT_column(DataTable dt)
         {
             Console.WriteLine("++++++++++++++Display DataTable Column++++++++++++++s");
@@ -440,6 +462,8 @@ namespace BOM_Matrix_cmd
             //    Console.Write(one + ", ");
             //}
             //Console.Read();
+            //DisplayDTAll(dt);
+            //Console.Read();
             return dt;
         }
 
@@ -459,13 +483,15 @@ namespace BOM_Matrix_cmd
                 for (int i = 0; i < dt.Columns.Count; i++)
                 {
                     //Console.Write("{0} = {1},",i,dt.Columns[i].ColumnName);
-                    if (dt.Columns[i].ColumnName == config) //選擇config
+                    if (dt.Columns[i].ColumnName.ToUpper() == config.ToUpper()) //選擇config,要全部轉為大寫
                     {
                         //Console.WriteLine("{0} site= {1}", dt.Columns[i].ColumnName, i);
                         ItemList_row = i;
                         //Console.Read();
                     }
                 }
+
+                //Console.WriteLine(ItemList_row);
 
                 //根據config位置找出row並儲存到dt2
                 for (int i = 0; i < dt.Rows.Count; i++)
