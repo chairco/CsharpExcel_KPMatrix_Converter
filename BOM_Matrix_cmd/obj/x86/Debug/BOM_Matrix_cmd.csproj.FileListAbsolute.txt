@@ -23,3 +23,4 @@ C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matri
 C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\bin\Debug\NPOI.OpenXml4Net.xml
 C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\obj\x86\Debug\BOM_Matrix_cmd.exe
 C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\obj\x86\Debug\BOM_Matrix_cmd.pdb
+C:\Users\yichieh_chen\Desktop\SourceCode\csharp\MatrixTools\BOM_Matrix\BOM_Matrix_cmd\obj\x86\Debug\BOM_Matrix_cmd.csprojResolveAssemblyReference.cache
