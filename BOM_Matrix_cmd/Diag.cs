@@ -17,7 +17,7 @@ namespace BOM_Matrix_cmd
 
         static public void Logo(Boolean blNoLogo = false, Boolean blClearScreen = true)
         {
-            string sRevision = "1.00";
+            string sRevision = "1.01a";
 #if DKey            
             sRevision += "P";
 #endif
