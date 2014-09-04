@@ -105,7 +105,8 @@ namespace BOM_Matrix_cmd
                                                     dt.Columns.Add(row.GetCell(j).StringCellValue.Trim());
                                                     dr[count] = row.GetCell(j).ToString().ToUpper();
                                                 }
-                                                else if (i == 2 || i == 3 || i == 4 || i == 8 || i == 13 || i == 16 || i == 20)
+                                                //else if (i == 2 || i == 3 || i == 4 || i == 8 || i == 13 || i == 16 || i == 20) //Panda
+                                                else if (i == 2 || i == 3 || i == 4 || i == 5 ) //Panther
                                                 {
                                                     dr_add = true;
                                                     ct = row.GetCell(j).CellType;
@@ -340,8 +341,8 @@ namespace BOM_Matrix_cmd
                                     {
                                         value = row.GetCell(j).ToString().ToUpper();
 
-                                        //只抓從ITEM欄位開始的資料
-                                        if (value == "ITEM")
+                                        //只抓從ITEM欄位開始的資料 //PANDA=ITEM, Panther=NED
+                                        if (value == "ITEM" || value == "NED")
                                         {
                                             //Console.WriteLine("開始抓Column");
                                             column_flag = true; //用來判斷標頭
@@ -427,21 +428,21 @@ namespace BOM_Matrix_cmd
                         Console.WriteLine(fileName + "\nLoading Config into memory");
 
                         //開始讀表格,一列開始讀(row,x軸)再讀行(其實是讀每個cell)
-                        for (int i = st.FirstRowNum + 1; i <= 30; i++)
+                        for (int i = st.FirstRowNum + 1; i <= 9; i++) ////for (int i = st.FirstRowNum + 1; i <= 30; i++)高30
                         {
                             dr = dt.NewRow();
                             row = st.GetRow(i);
 
                             if (row != null)
                             {
-                                for (int j = 29; j < row.LastCellNum; j++)
+                                for (int j = 23; j < row.LastCellNum; j++) ////for (int j = 29; j < row.LastCellNum; j++)->PANDA從29開始
                                 {
                                     if (row.GetCell(j) != null) //解決跨行cell是空值問題
                                     {
                                         value = row.GetCell(j).ToString().ToUpper();
                                         //Console.Write("({0},{1})={2}, ",i,j,value);
                                         //Console.Write(value + ",");
-                                        if (i == 2 && j >= 30)
+                                        if (i == 2 && j >= 24) ////if (i == 2 && j >= 30) ->PANDA從30
                                         {
                                             if (value != "CONFIGS") configList.Add(value);
                                         }
@@ -689,8 +690,8 @@ namespace BOM_Matrix_cmd
                                     {
                                         data += values.Rows[i][j].ToString() + "\n";
                                     }
-                                    
-                                    if (value.Key.ToString() == "MLB" && j == 1)
+
+                                    if (value.Key.ToString() == "FIJI MLB" && j == 1) //if (value.Key.ToString() == "MLB" && j == 1) ->PANDA
                                     {
                                         MLB_value = values.Rows[i][j].ToString(); //setting MLB search value
                                         db_mlb.Add(config_key.Key.ToString(), MLB_value);
@@ -861,25 +862,26 @@ namespace BOM_Matrix_cmd
         static void Main(string[] args)
         {
 
-            bool mode = true; //1,false; 2,true (MLB or FATP)
+            bool mode = true; //PANDA: 1,false; 2,true (MLB or FATP). Panther: 1,false; 3,true (MLB or FATP).
             //read excel path
-            string file = "C:\\FATP_T.xlsx";
+            string file = "C:\\Panther_FATP.xlsx";
             _EXCEL excel = new _EXCEL(file);
 
             ////設定參數(FATP_ITEM)
             excel.fileNames = file;
             excel.column_s = 2;
-            excel.column_e = 20;
-            excel.row_s = 29;
+            excel.column_e = 9; //excel.column_e = 20;-->Panda
+            excel.row_s = 23; //excel.row_s = 29; -->Panda
             DataTable dt_config = excel.Excel_To_Datatable((int)DTMode.fatp_item);
 
             //read excel config data to Datatable and arrayList
-            excel.ExcelToDataTable(2, mode, true);
+            excel.ExcelToDataTable(3, mode, true);
             //read excel item data to Datatable
-            Dictionary<string, object> FATP_ht = excel.DataTableToExcel(excel.DataTableToHashTable(excel.ExcelToDataTable(2, mode, false)), mode);
+            Dictionary<string, object> FATP_ht = excel.DataTableToExcel(excel.DataTableToHashTable(excel.ExcelToDataTable(3, mode, false)), mode);
+
 
             mode = false;
-            file = "C:\\MLB_T.xlsx";
+            file = "C:\\N71_MLB.xlsx";
             _EXCEL MLB_excel = new _EXCEL(file);
             MLB_excel.ExcelToDataTable(1, mode, true);
             Dictionary<string, object> MLB_ht = MLB_excel.DataTableToExcel(MLB_excel.DataTableToHashTable(MLB_excel.ExcelToDataTable(1, mode, false)), mode);
@@ -892,6 +894,7 @@ namespace BOM_Matrix_cmd
             System.Console.ReadKey();
         }
         */
+
         
         static bool blNoLogo = false;
         static bool blNoClearScreen = false;
@@ -960,7 +963,7 @@ namespace BOM_Matrix_cmd
 
         static void _main(string file, string file2)
         {
-            bool mode = true; //1,false; 2,true (MLB or FATP)
+            bool mode = true; //PANDA: 1,false; 2,true (MLB or FATP). Panther: 1,false; 3,true (MLB or FATP).
             //read excel path
             //string file = "C:\\PANDA.xlsx";
             _EXCEL excel = new _EXCEL(file);
@@ -968,15 +971,16 @@ namespace BOM_Matrix_cmd
             ////設定參數(FATP_ITEM)
             excel.fileNames = file;
             excel.column_s = 2;
-            excel.column_e = 20;
-            excel.row_s = 29;
+            excel.column_e = 9; //excel.column_e = 20;-->Panda
+            excel.row_s = 23; //excel.row_s = 29; -->Panda
             DataTable dt_config = excel.Excel_To_Datatable((int)DTMode.fatp_item);
 
             //read excel config data to Datatable and arrayList
-            excel.ExcelToDataTable(2, mode, true);
+            excel.ExcelToDataTable(3, mode, true); //excel.ExcelToDataTable(2, mode, true);
             //read excel item data to Datatable
-            Dictionary<string, object> FATP_ht = excel.DataTableToExcel(excel.DataTableToHashTable(excel.ExcelToDataTable(2, mode, false)), mode);
-
+            //Dictionary<string, object> FATP_ht = excel.DataTableToExcel(excel.DataTableToHashTable(excel.ExcelToDataTable(2, mode, false)), mode);
+            Dictionary<string, object> FATP_ht = excel.DataTableToExcel(excel.DataTableToHashTable(excel.ExcelToDataTable(3, mode, false)), mode);
+            
             mode = false;
             //file = "C:\\MLB_T.xlsx";
             _EXCEL MLB_excel = new _EXCEL(file2);
@@ -986,5 +990,6 @@ namespace BOM_Matrix_cmd
             //輸出
             excel.WriteExcel(FATP_ht, MLB_ht, excel.ReadINI(true), excel.ReadINI(false), dt_config);
         }
+         
     }
 }

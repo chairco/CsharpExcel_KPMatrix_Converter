@@ -12,12 +12,12 @@ namespace BOM_Matrix_cmd
     class Diags
     {
         static string sProgramDescription = "Windows C# BOM_Matrix Utility";
-        static string sBuildDate = "2014-09-01";
+        static string sBuildDate = "2014-09-04";
 //        static string sRevision = "1.00a";
 
         static public void Logo(Boolean blNoLogo = false, Boolean blClearScreen = true)
         {
-            string sRevision = "1.01a";
+            string sRevision = "1.01b";
 #if DKey            
             sRevision += "P";
 #endif
